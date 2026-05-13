@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Juliana Pipeline Search</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #0f0f10;
+    color: #e8e6e1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .header h1 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b6860;
+    margin-bottom: 0.3rem;
+  }
+
+  .header p {
+    font-size: 0.8rem;
+    color: #444;
+    letter-spacing: 0.04em;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: 640px;
+    position: relative;
+    margin-bottom: 1rem;
+  }
+
+  .search-box textarea {
+    width: 100%;
+    background: #1a1a1c;
+    border: 1px solid #2a2a2e;
+    border-radius: 12px;
+    padding: 1rem 1rem 3rem 1rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: #e8e6e1;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    transition: border-color 0.2s;
+    min-height: 90px;
+  }
+
+  .search-box textarea:focus {
+    border-color: #3a3a3e;
+  }
+
+  .search-box textarea::placeholder {
+    color: #3a3a3e;
+  }
+
+  .search-footer {
+    position: absolute;
+    bottom: 10px;
+    left: 12px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sources {
+    display: flex;
+    gap: 6px;
+  }
+
+  .source-pill {
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid #2a2a2e;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .source-pill.active {
+    border-color: #4a9eff44;
+    color: #4a9eff;
+    background: #4a9eff11;
+  }
+
+  .ask-btn {
+    background: #e8e6e1;
+    color: #0f0f10;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .ask-btn:hover { opacity: 0.85; }
+  .ask-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .suggestions {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+  }
+
+  .suggestion {
+    font-size: 0.75rem;
+    color: #555;
+    border: 1px solid #222;
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #131315;
+  }
+
+  .suggestion:hover {
+    color: #e8e6e1;
+    border-color: #3a3a3e;
+    background: #1a1a1c;
+  }
+
+  .answer-area {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .answer-card {
+    background: #1a1a1c;
+    border: 1px solid #2a2a2e;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: none;
+  }
+
+  .answer-card.visible { display: block; }
+
+  .answer-meta {
+    font-size: 0.7rem;
+    color: #444;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .answer-meta .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4a9eff;
+    animation: pulse 1.5s infinite;
+    display: none;
+  }
+
+  .answer-meta .dot.active { display: block; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .answer-text {
+    font-size: 0.9rem;
+    line-height: 1.75;
+    color: #c8c6c1;
+    white-space: pre-wrap;
+  }
+
+  .answer-text strong {
+    color: #e8e6e1;
+    font-weight: 500;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #1e1e20;
+    margin: 1rem 0;
+  }
+
+  .history-item {
+    margin-bottom: 1rem;
+  }
+
+  .history-q {
+    font-size: 0.78rem;
+    color: #555;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.02em;
+  }
+
+  .history-a {
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: #c8c6c1;
+    white-space: pre-wrap;
+  }
+
+  .error {
+    font-size: 0.85rem;
+    color: #ff6b6b;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap');
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Juliana Pipeline</h1>
+  <p>Ask anything across Notion · Google Sheets · Granola</p>
+</div>
+
+<div class="search-box">
+  <textarea id="query" placeholder="e.g. What's blocking Bon Secours? What did we discuss with UH last call? Which accounts does Leah own?" rows="3"></textarea>
+  <div class="search-footer">
+    <div class="sources">
+      <span class="source-pill active" data-src="notion">Notion</span>
+      <span class="source-pill active" data-src="sheets">Sheets</span>
+      <span class="source-pill active" data-src="granola">Granola</span>
+    </div>
+    <button class="ask-btn" id="askBtn" onclick="ask()">Ask →</button>
+  </div>
+</div>
+
+<div class="suggestions">
+  <span class="suggestion" onclick="fill(this)">What's blocking MacNeal?</span>
+  <span class="suggestion" onclick="fill(this)">Which accounts are Leah's?</span>
+  <span class="suggestion" onclick="fill(this)">What did we decide about UH last meeting?</span>
+  <span class="suggestion" onclick="fill(this)">Who hasn't responded?</span>
+  <span class="suggestion" onclick="fill(this)">What are the top risks right now?</span>
+  <span class="suggestion" onclick="fill(this)">Which cold accounts have re-engage dates this month?</span>
+</div>
+
+<div class="answer-area">
+  <div class="answer-card" id="answerCard">
+    <div class="answer-meta">
+      <span class="dot" id="dot"></span>
+      <span id="metaLabel">Answer</span>
+    </div>
+    <div class="answer-text" id="answerText"></div>
+  </div>
+</div>
+
+<script>
+const SOURCES = {
+  notion: true,
+  sheets: true,
+  granola: true
+};
+
+document.querySelectorAll('.source-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const src = pill.dataset.src;
+    SOURCES[src] = !SOURCES[src];
+    pill.classList.toggle('active', SOURCES[src]);
+  });
+});
+
+function fill(el) {
+  document.getElementById('query').value = el.textContent;
+  document.getElementById('query').focus();
+}
+
+document.getElementById('query').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+});
+
+const history = [];
+
+async function ask() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+
+  const btn = document.getElementById('askBtn');
+  const card = document.getElementById('answerCard');
+  const answerEl = document.getElementById('answerText');
+  const dot = document.getElementById('dot');
+  const metaLabel = document.getElementById('metaLabel');
+
+  btn.disabled = true;
+  card.classList.add('visible');
+  dot.classList.add('active');
+  metaLabel.textContent = 'Searching…';
+  answerEl.textContent = '';
+
+  const activeSources = Object.entries(SOURCES).filter(([,v]) => v).map(([k]) => k);
+  const sourceList = activeSources.join(', ');
+
+  const systemPrompt = `You are an AI assistant embedded in the Juliana Care pipeline tracker in Notion.
+You have access to data from: ${sourceList}.
+
+You know the following about the Juliana GTM pipeline:
+
+PIPELINE OVERVIEW:
+- 34 total prospects, 7 top-tier active, 9 active engagement, 20 awaiting action, 9 TEAM model hospitals
+
+TOP-TIER ACCOUNTS:
+- Bon Secours Mercy Health | Active | Blocker: None | Next: Sign NDA → exchange data for ROI case → meet with CFO | Owner: Patrick
+- University Hospitals | Advanced | Blocker: None | Next: Lock in-person design session + send TCC + fee materials | Owner: Patrick
+- MacNeal (Trinity Health) | In Progress | Blocker: NDA/Legal | Next: Follow up with Chuck on NDA ETA | Owner: Patrick
+- Northwestern Medicine | Paused | Blocker: Internal Alignment | Next: Call Dr. Desai re: internal socialization outcome | Owner: Patrick
+- Franciscan Alliance | Early Active | Blocker: None | Next: Confirm meeting with Mike Englehart | Owner: Patrick
+- Powers Health | Active | Blocker: None | Next: Schedule follow-up with Leo + Dr. Kumar (CMO) | Owner: Patrick
+- Emory Healthcare | Active | Blocker: Materials Needed | Next: Send socialization deck to Gem Begoli | Owner: Patrick
+- Wellstar | Active | Blocker: None | Next: Progress intro via Spence McCelland / Noro-Mosley | Owner: Patrick
+
+LEAH'S ACCOUNTS (warm relationships, activated May 19):
+- Tampa General | Cold | Next: Warm intro to John Couris (CEO) + Scott Arnold (Chief Digital) | Owner: Leah
+- Ardent Health | Cold | Next: Email Anika Gardenhire with intro + one-pager | Owner: Leah
+- Northwell Health | Cold | Next: Reach out to Chethan Sathya via warm intro | Owner: Leah
+- Advocate Health | Cold | Next: Email Rasu Shrestha with intro + context | Owner: Leah
+
+SHADI'S ACCOUNTS (first-touch outreach due May 29):
+- SUNY | Very Early | Owner: Patrick / Shadi
+- UAB | Very Early | Owner: Shadi
+- UTSW | Very Early | Owner: Shadi
+
+OTHER ACTIVE:
+- Rush University | Meeting Held | Next: Schedule CMO Dr. Paul Casey follow-up by May 22 | Owner: Patrick + Michael
+- OSF Healthcare | Active | Next: Les schedules follow-up with Kip McCoy by May 22 | Owner: Les
+- Phoebe Health | Very Early | Next: Schedule discovery call with CEO Scott Stiener | Owner: Patrick
+- Salinas Valley | Very Early | Next: Schedule meeting with Alex Nadal (investor channel) | Owner: Patrick
+
+COLD / PARKED (with re-engage dates):
+- NewYork-Presbyterian | Re-engage: Jun 2 | TEAM model — outreach to CFO
+- Memorial Hermann | Re-engage: Jun 2 | TEAM model — outreach to CFO
+- Banner Health | Re-engage: Jun 9 | TEAM model — outreach to CTO
+- UC San Diego | Re-engage: Jun 1 | Final attempt — deprioritize if no reply
+- Cook County | Re-engage: Jun 9 | Parked
+- Endeavor Health | Re-engage: May 29 | No response from Sally Faulkner
+- Mount Sinai Ventures | Very Early | Patrick + investor channel
+
+KEY RISKS:
+1. Shared savings model needs hardening — Bon Secours CMO flagged capacity metrics as 'too soft'
+2. TCC articulation gap — UH + others asking for clearer TCC data source + pricing rationale
+3. NDA / legal cycle time — MacNeal in legal review; pattern risk across pipeline
+4. Cohorted patient model resistance — centralized location requirement may face pushback
+5. Northwestern internal alignment — dependent on Dr. Desai's internal advocates
+
+RECENT MEETING NOTES (Juliana Weekly, May 12):
+- Bon Secours in-person April 23 with 3 regional CMOs went well; positive feedback; NDA next
+- UH 2nd call with clinical leadership very positive; follow-up arrived early next morning
+- MacNeal: Chuck replied quickly; legal reviewing NDA
+- Northwestern: Dr. Desai asked for April to socialize; Patrick to follow up first week of May
+- Powers Health: strong CEO-level engagement with Leo Corea
+- Emory: intro meeting went well; socializing with Gem Begoli
+- Leah's relationships at Tampa General, Ardent, Northwell, Advocate flagged as high-potential activations
+- Shadi covering academic medical center outreach (SUNY, UAB, UTSW)
+
+Answer questions concisely and directly. Use the data above. If asked about something not in the data, say so clearly. Format answers with line breaks for readability. Be specific — names, dates, owners, blockers.`;
+
+  const messages = [
+    ...history,
+    { role: 'user', content: q }
+  ];
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error.message);
+
+    const answer = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+
+    history.push({ role: 'user', content: q });
+    history.push({ role: 'assistant', content: answer });
+
+    dot.classList.remove('active');
+    metaLabel.textContent = `Answer · ${activeSources.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' + ')}`;
+
+    answerEl.innerHTML = formatAnswer(answer);
+
+    document.getElementById('query').value = '';
+
+  } catch (err) {
+    dot.classList.remove('active');
+    metaLabel.textContent = 'Error';
+    answerEl.innerHTML = `<span class="error">Something went wrong: ${err.message}</span>`;
+  }
+
+  btn.disabled = false;
+}
+
+function formatAnswer(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+</script>
+</body>
+</html>
