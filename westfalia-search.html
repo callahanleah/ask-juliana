@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ask Westfalia</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #0a0f1e;
+    color: #e8e6e1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  .header { text-align: center; margin-bottom: 2rem; }
+  .header h1 { font-size: 1.1rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7faa; margin-bottom: 0.3rem; }
+  .header p { font-size: 0.8rem; color: #444; letter-spacing: 0.04em; }
+  .search-box { width: 100%; max-width: 640px; position: relative; margin-bottom: 1rem; }
+  .search-box textarea { width: 100%; background: #111827; border: 1px solid #1e2d4a; border-radius: 12px; padding: 1rem 1rem 3rem 1rem; font-family: inherit; font-size: 0.95rem; color: #e8e6e1; resize: none; outline: none; line-height: 1.5; transition: border-color 0.2s; min-height: 90px; }
+  .search-box textarea:focus { border-color: #2d4a7a; }
+  .search-box textarea::placeholder { color: #2d3a50; }
+  .search-footer { position: absolute; bottom: 10px; left: 12px; right: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .sources { display: flex; gap: 6px; }
+  .source-pill { font-size: 0.65rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; border: 1px solid #1e2d4a; color: #4a6080; cursor: pointer; transition: all 0.15s; user-select: none; }
+  .source-pill.active { border-color: #3a6eff44; color: #3a6eff; background: #3a6eff11; }
+  .ask-btn { background: #e8e6e1; color: #0a0f1e; border: none; border-radius: 8px; padding: 6px 14px; font-family: inherit; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .ask-btn:hover { opacity: 0.85; }
+  .ask-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .suggestions { width: 100%; max-width: 640px; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.5rem; }
+  .suggestion { font-size: 0.75rem; color: #4a6080; border: 1px solid #1a2030; border-radius: 20px; padding: 4px 12px; cursor: pointer; transition: all 0.15s; background: #0d1525; }
+  .suggestion:hover { color: #e8e6e1; border-color: #2d4a7a; background: #111827; }
+  .answer-area { width: 100%; max-width: 640px; }
+  .answer-card { background: #111827; border: 1px solid #1e2d4a; border-radius: 12px; padding: 1.25rem; display: none; }
+  .answer-card.visible { display: block; }
+  .answer-meta { font-size: 0.7rem; color: #4a6080; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; }
+  .answer-meta .dot { width: 6px; height: 6px; border-radius: 50%; background: #3a6eff; animation: pulse 1.5s infinite; display: none; }
+  .answer-meta .dot.active { display: block; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .answer-text { font-size: 0.9rem; line-height: 1.75; color: #c8c6c1; white-space: pre-wrap; }
+  .answer-text strong { color: #e8e6e1; font-weight: 500; }
+  .error { font-size: 0.85rem; color: #ff6b6b; }
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap');
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Ask Westfalia</h1>
+  <p>Ask anything across CRM · Meeting Notes · Product · Web</p>
+</div>
+<div class="search-box">
+  <textarea id="query" placeholder="e.g. What's the status of HealthEquity? What did Joe Maxwell say? Which P0 accounts need action this week?" rows="3"></textarea>
+  <div class="search-footer">
+    <div class="sources">
+      <span class="source-pill active" data-src="crm">CRM</span>
+      <span class="source-pill active" data-src="meetings">Meetings</span>
+      <span class="source-pill active" data-src="product">Product</span>
+      <span class="source-pill active" data-src="web">Web</span>
+    </div>
+    <button class="ask-btn" id="askBtn" onclick="ask()">Ask →</button>
+  </div>
+</div>
+<div class="suggestions">
+  <span class="suggestion" onclick="fill(this)">What are the P0 accounts?</span>
+  <span class="suggestion" onclick="fill(this)">What did Joe Maxwell say?</span>
+  <span class="suggestion" onclick="fill(this)">What's blocking HealthEquity?</span>
+  <span class="suggestion" onclick="fill(this)">What's the Kyra Health pilot status?</span>
+  <span class="suggestion" onclick="fill(this)">Which accounts are Peter's?</span>
+  <span class="suggestion" onclick="fill(this)">What are the top risks right now?</span>
+  <span class="suggestion" onclick="fill(this)">What's the Howlite deal status?</span>
+  <span class="suggestion" onclick="fill(this)">Latest news on ICHRA market 2026</span>
+</div>
+<div class="answer-area">
+  <div class="answer-card" id="answerCard">
+    <div class="answer-meta">
+      <span class="dot" id="dot"></span>
+      <span id="metaLabel">Answer</span>
+    </div>
+    <div class="answer-text" id="answerText"></div>
+  </div>
+</div>
+<script>
+const SOURCES = { crm: true, meetings: true, product: true, web: true };
+document.querySelectorAll('.source-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const src = pill.dataset.src;
+    SOURCES[src] = !SOURCES[src];
+    pill.classList.toggle('active', SOURCES[src]);
+  });
+});
+function fill(el) { document.getElementById('query').value = el.textContent; document.getElementById('query').focus(); }
+document.getElementById('query').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } });
+const history = [];
+
+async function ask() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('askBtn');
+  const card = document.getElementById('answerCard');
+  const answerEl = document.getElementById('answerText');
+  const dot = document.getElementById('dot');
+  const metaLabel = document.getElementById('metaLabel');
+  btn.disabled = true;
+  card.classList.add('visible');
+  dot.classList.add('active');
+  metaLabel.textContent = 'Searching…';
+  answerEl.textContent = '';
+
+  const systemPrompt = `You are an AI assistant for Westfalia, a healthcare financial operating system, embedded in their GTM pipeline tracker.
+
+== WHAT WESTFALIA IS ==
+Westfalia is a family-level personal health record (PHR) and smart payment layer. Core product: Smart EOB — AI-powered interpretation of Explanation of Benefits documents that tells members what they owe, why, and how to pay using the right account (HSA/FSA/HRA/credit/debit). Single HSA card covers all payment types; backend determines funding source per transaction. Zero receivable risk for providers validated.
+
+Revenue: HSA transaction revenue ($60K–$100K per 1,000 beneficiaries, split with Howlite TBD) + PMPM subscription (~$0.50 PMPM anchor) + Data/API (Year 2–3).
+
+Distribution strategy: HSA custodians first = infrastructure. ICHRA first = replaceable feature layer. This is a viability decision.
+
+== KEY RELATIONSHIPS ==
+- Howlite: Card rails partner. Economic terms NOT locked (transaction split, Permitted Activities carve-out, equity/warrant terms, acquisition protection — all open). Building operational dependency before these terms are locked is the single highest business risk.
+- PeopleCare / Paolo: AI interpretation layer. Merger diligence not closed (outside investor status, ARR, IP ownership). Paolo must be inside Westfalia for AI to be a moat, not a vendor.
+- Joe Maxwell: Fintop Capital partner + Thread Bank board member. Call May 19. "No one has put it together the way we've put it together." Offered Thread intro when demo matures. Raising fourth fund.
+
+== P0 ACCOUNTS (Act This Week) ==
+- HealthEquity | HSA Bank | Outreach Sent | Peter | Secure Paul Black (former BoD) intro; validate buyer fit | Largest HSA custodian, 10.6M HSAs
+- BenePass | HSA Enabler | Need Intro | Peter | Ask Joe/Thread for warm intro; validate HSA + Smart EOB fit | Due May 29 | Joe confirmed Thread has two large HSA partners incl. BenePass
+- Forma | HSA Enabler | Need Intro | Peter | Identify product/partnerships leader; Joe warm path | Due May 29 | Thread Bank card relationship confirmed; Joe specifically suggested
+- Thread Bank | HSA Bank | Discovery Complete | John | Confirm BenePass + 2nd HSA partner model; mature story first | Joe is chairman; better later-stage partner than first buyer
+- Kyra Health | ICHRA | Pilot Discussion | Paolo | Define paid pilot scope and success criteria | Only active pilot in pipeline
+
+== P1 ACCOUNTS (Active Sprint) ==
+- Lantern | HSA Enabler | Need Intro | Peter | Confirm Joe intro; validate Smart EOB for direct-contract episodes | Due Jun 5
+- Lithic | FI Vendor | Need Intro | Peter | Ask Joe/Thread if Lithic has HSA/benefits-card context | Due Jun 5
+- Health Here | Strategic Partner | Need Intro | Peter | Ask Ryan Wells/Joe re: Smart EOB payment-liability workflow | Due Jun 5
+- Marqeta | FI Vendor | Research | Peter | Research healthcare/HSA card programs | Due Jun 12
+- Galileo | FI Vendor | Research | Peter | Research HSA/benefits fintech customers | Due Jun 12
+- Unit | FI Vendor | Research | Peter | Research HSA/healthcare wallet architecture fit | Due Jun 12
+
+== FULL PIPELINE (80 opportunities) ==
+ICHRA: Kyra Health (Pilot Discussion/Paolo), Venteur (Active/Ray-Stacy Edgar), Ambetter/Centene (Research/John-Ross Hoffman), Take Command Health (Research-needs intro), Remodel Health (Research-needs intro), Stretch Dollar (Research/John-Marshall Darr), zizzl health (Research-Ray Seaver/Lori Koehler), Oscar Health (Research-Cathy Grason), PeopleKeep (Research), Gravie (Research), Sana Benefits (Research), Thatch (Research-competitor), Zorro (Research)
+HSA Banks: HealthEquity (P0/Peter-Paul Black), Thread Bank (P0/John-Joe Maxwell), Alegeus (Research/John-Leif O'Leary), Inspira Financial (Research/John-Matt Marek), WEX Health (Research), HSA Bank/Webster (Research/John-Tim Patneaude), Lively (Research/John-Daniella Biondo), First Dollar (Research-Drew Geissinger), Dailii (Research/John), Instamed/JPM (On Hold/John-Jeff Lin)
+Investors: Hashgraph Ventures (Investor Discussion/John-Eric Piscini — positive May 12 call, open to investment), Fintop Capital (Discovery Scheduled→Complete/John-Joe Maxwell — strong validation May 19), QED Investors (Research-Laura Bock — public ICHRA thesis), a16z (Research/John-Julie Yoo), General Catalyst (Research-Holly Maloney), Define Ventures (Research-Chirag Shah), Oak HC/FT (Research-Colleen Cozzens), Index Ventures (Research-Sofia Dolfe), Edison Partners (Research-Christopher Sugden), CMT Digital (Discovery Complete/John-Sam Halleen — skeptical on rails), Morgan Health/JPM (Research)
+Strategic Partners: Hedera Hashgraph (Discovery Complete/John-Eric Piscini — fintech substrate/Howlite alignment), Credo (Discovery Scheduled Sep 11/John-Carm Huntress), Zus (Discovery Complete/John-Jason Bent — vendor path), TenTwo (Active/John-John Bass — VKC project), Pangea (Active/John-Ali Sekman), Health Here (P1/Peter), Lantern (P1/Peter), AARP (Research/John), HUB International (Research-Michelle Jukoski), OneDigital (Research-Zach Hall), Inbox Health (Research), RightShop (Research/John-Michelle Martin), Sedera (Research), Corvex (Research/John-Jay Crystal)
+Providers: Cleveland Clinic (Active/Tim-Todd Schwartzinger — ongoing), VUMC (Outreach Sent May 6/John-Ken Brock), Kaiser (Outreach Sent May 6/John-Stephan Baur), OSF (Outreach Sent May 6/John-Kip McCoy), HCA/Parallon (Research/John-Joe Roddy), Sutter (Research), Velocity Health (Not ICP/John — no claims, Smart EOB not relevant)
+FI Vendors: Lithic (P1/Peter), Marqeta (P1/Peter), Galileo (P1/Peter), Unit (P1/Peter), GT Independence (Research — large Medicaid self-direction programs), PPL (Research — NY/MN/OH/VA programs), Acumen (Research), Careforth (Research)
+Consumer/Research: Vanderbilt Kennedy Center (Active/John-Pablo Juarez — IDD community), Kramer Davis (Active/John-Sameer Sood — IDD), Natalie Jackson (Discovery Scheduled/Lianne — McNeilly Center), Stacey Bonner (Complete/Lianne — Vanderbilt), Debby Moorman (Stale outreach/Lianne — Inspira), Gerald Garland (Stale outreach/Lianne — Northwell)
+On Hold: Christian Health Ministries, NonStop Health, Instamed
+Not ICP: Velocity Health, Commerce Bank (exited HSA business)
+
+== OWNER MAP ==
+- John: Investors, HSA banks, provider outreach, strategic partnerships, Hedera/Howlite
+- Peter: HSA enablers (BenePass, Forma, HealthEquity, Lantern), FI infrastructure (Lithic, Marqeta, Galileo, Unit)
+- Paolo / Prashant: Kyra Health pilot, product build, Smart EOB
+- Ray: ICHRA (Venteur + 8–12 new leads coming), business model
+- Tim: Cleveland Clinic, provider partnerships
+- Lianne: Consumer interviews
+
+== KEY RISKS ==
+1. Howlite economic terms not locked — transaction split, Permitted Activities carve-out, equity/warrant terms — highest business risk
+2. PeopleCare merger diligence not closed — IP ownership, ARR, outside investor status
+3. No committed distribution partner at scale — HealthEquity Paul Black intro is highest-leverage unlock
+4. No legal entity formed yet — blocked pending Cara Health contract + HSA validation
+5. AI interpretation accuracy — if wrong, trust is gone permanently; stress test not run at scale
+6. Howlite Permitted Activities carve-out — could let Howlite supply competing orchestrator
+
+== RECENT MEETING (May 21 — Westfalia + Howlite Cadence Call) ==
+- Joe Maxwell: unprecedented excitement, "no one has put it together the way we've put it together"
+- GTM pivot: HSA fintech enablers first (Thread → HealthEquity → Forma → BenePass → Lantern)
+- Multi-payment credential validated: single HSA card, backend determines funding source
+- Paolo building full Westfalia onboarding with real-time EHR integration + admin dashboard
+- Smart EOB nearly complete; production-ready for external demos
+- Ray presenting business model Tuesday; 8–12 ICHRA leads next week
+- Meeting cadence moving to Thursdays 2pm
+- Deck completion needed: logo update, architecture slide, transaction flow comparison
+- Slack invites being resent to Tim/Chandra
+
+Answer questions directly and specifically. For pipeline questions use data above. Format tables for multi-row results. Be specific — names, owners, stages, blockers. If web is enabled, use it for market/competitor context.`;
+
+  const messages = [...history, { role: 'user', content: q }];
+
+  try {
+    const res = await fetch('https://juliana-proxy.lcallahan-926.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages
+      }, SOURCES.web ? { tools: [{ type: 'web_search_20250305', name: 'web_search' }] } : {}))
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const answer = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    history.push({ role: 'user', content: q });
+    history.push({ role: 'assistant', content: answer });
+    dot.classList.remove('active');
+    metaLabel.textContent = `Answer · ${Object.entries(SOURCES).filter(([,v])=>v).map(([k])=>k[0].toUpperCase()+k.slice(1)).join(' + ')}`;
+    answerEl.innerHTML = answer.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    document.getElementById('query').value = '';
+  } catch (err) {
+    dot.classList.remove('active');
+    metaLabel.textContent = 'Error';
+    answerEl.innerHTML = `<span class="error">Something went wrong: ${err.message}</span>`;
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
