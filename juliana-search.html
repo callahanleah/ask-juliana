@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Juliana Pipeline Search</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #0f0f10;
+    color: #e8e6e1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .header h1 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b6860;
+    margin-bottom: 0.3rem;
+  }
+
+  .header p {
+    font-size: 0.8rem;
+    color: #444;
+    letter-spacing: 0.04em;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: 640px;
+    position: relative;
+    margin-bottom: 1rem;
+  }
+
+  .search-box textarea {
+    width: 100%;
+    background: #1a1a1c;
+    border: 1px solid #2a2a2e;
+    border-radius: 12px;
+    padding: 1rem 1rem 3rem 1rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: #e8e6e1;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    transition: border-color 0.2s;
+    min-height: 90px;
+  }
+
+  .search-box textarea:focus {
+    border-color: #3a3a3e;
+  }
+
+  .search-box textarea::placeholder {
+    color: #3a3a3e;
+  }
+
+  .search-footer {
+    position: absolute;
+    bottom: 10px;
+    left: 12px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sources {
+    display: flex;
+    gap: 6px;
+  }
+
+  .source-pill {
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid #2a2a2e;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .source-pill.active {
+    border-color: #4a9eff44;
+    color: #4a9eff;
+    background: #4a9eff11;
+  }
+
+  .ask-btn {
+    background: #e8e6e1;
+    color: #0f0f10;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .ask-btn:hover { opacity: 0.85; }
+  .ask-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .suggestions {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+  }
+
+  .suggestion {
+    font-size: 0.75rem;
+    color: #555;
+    border: 1px solid #222;
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #131315;
+  }
+
+  .suggestion:hover {
+    color: #e8e6e1;
+    border-color: #3a3a3e;
+    background: #1a1a1c;
+  }
+
+  .answer-area {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .answer-card {
+    background: #1a1a1c;
+    border: 1px solid #2a2a2e;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: none;
+  }
+
+  .answer-card.visible { display: block; }
+
+  .answer-meta {
+    font-size: 0.7rem;
+    color: #444;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .answer-meta .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4a9eff;
+    animation: pulse 1.5s infinite;
+    display: none;
+  }
+
+  .answer-meta .dot.active { display: block; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .answer-text {
+    font-size: 0.9rem;
+    line-height: 1.75;
+    color: #c8c6c1;
+    white-space: pre-wrap;
+  }
+
+  .answer-text strong {
+    color: #e8e6e1;
+    font-weight: 500;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #1e1e20;
+    margin: 1rem 0;
+  }
+
+  .history-item {
+    margin-bottom: 1rem;
+  }
+
+  .history-q {
+    font-size: 0.78rem;
+    color: #555;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.02em;
+  }
+
+  .history-a {
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: #c8c6c1;
+    white-space: pre-wrap;
+  }
+
+  .error {
+    font-size: 0.85rem;
+    color: #ff6b6b;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap');
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Ask Juliana</h1>
+  <p>Ask anything across Notion · Google Sheets · Granola · Web</p>
+</div>
+
+<div class="search-box">
+  <textarea id="query" placeholder="e.g. What's blocking Bon Secours? What did we discuss with UH last call? Which accounts does Leah own?" rows="3"></textarea>
+  <div class="search-footer">
+    <div class="sources">
+      <span class="source-pill active" data-src="notion">Notion</span>
+      <span class="source-pill active" data-src="sheets">Sheets</span>
+      <span class="source-pill active" data-src="granola">Granola</span>
+      <span class="source-pill active" data-src="web">Web</span>
+    </div>
+    <button class="ask-btn" id="askBtn" onclick="ask()">Ask →</button>
+  </div>
+</div>
+
+<div class="suggestions">
+  <span class="suggestion" onclick="fill(this)">What's blocking MacNeal?</span>
+  <span class="suggestion" onclick="fill(this)">Which accounts are Leah's?</span>
+  <span class="suggestion" onclick="fill(this)">Who hasn't responded?</span>
+  <span class="suggestion" onclick="fill(this)">Top risks right now?</span>
+  <span class="suggestion" onclick="fill(this)">Hospitals with bed util above 85% and LOS above 6</span>
+  <span class="suggestion" onclick="fill(this)">Which hospitals have the highest ICP score?</span>
+  <span class="suggestion" onclick="fill(this)">Teaching hospitals in the Midwest with high Medicaid</span>
+  <span class="suggestion" onclick="fill(this)">Hospitals with CMI above 2.5 and over 500 beds</span>
+  <span class="suggestion" onclick="fill(this)">Latest news on Bon Secours Mercy Health</span>
+  <span class="suggestion" onclick="fill(this)">CMS TEAM model updates 2026</span>
+</div>
+
+<div class="answer-area">
+  <div class="answer-card" id="answerCard">
+    <div class="answer-meta">
+      <span class="dot" id="dot"></span>
+      <span id="metaLabel">Answer</span>
+    </div>
+    <div class="answer-text" id="answerText"></div>
+  </div>
+</div>
+
+<script>
+const SOURCES = {
+  notion: true,
+  sheets: true,
+  granola: true,
+  web: true
+};
+
+document.querySelectorAll('.source-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const src = pill.dataset.src;
+    SOURCES[src] = !SOURCES[src];
+    pill.classList.toggle('active', SOURCES[src]);
+  });
+});
+
+function fill(el) {
+  document.getElementById('query').value = el.textContent;
+  document.getElementById('query').focus();
+}
+
+document.getElementById('query').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+});
+
+const history = [];
+
+async function ask() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+
+  const btn = document.getElementById('askBtn');
+  const card = document.getElementById('answerCard');
+  const answerEl = document.getElementById('answerText');
+  const dot = document.getElementById('dot');
+  const metaLabel = document.getElementById('metaLabel');
+
+  btn.disabled = true;
+  card.classList.add('visible');
+  dot.classList.add('active');
+  metaLabel.textContent = 'Searching…';
+  answerEl.textContent = '';
+
+  const activeSources = Object.entries(SOURCES).filter(([,v]) => v).map(([k]) => k);
+  const sourceList = activeSources.join(', ');
+
+  const HOSPITAL_DATA = `RMC Anniston (FKA Northeast Alabama Regional Medical Center - Anniston)|Anniston,AL|beds:295|util:50%|LOS:5.22|CMI:1.66|MC_pct:22%|MD_pct:22%|Governmental - Oth|Urban
+UAB St Vincents Birmingham (FKA Ascension St Vincents Birmingham)|Birmingham,AL|beds:399|util:61%|LOS:5.1|CMI:1.98|MC_pct:13%|MD_pct:16%|Governmental - Sta|Urban
+Baptist Health Princeton Hospital (FKA Princeton Baptist Medical Center)|Birmingham,AL|beds:240|util:58%|LOS:5.06|CMI:2.24|MC_pct:19%|MD_pct:17%|Voluntary Nonprofi|Urban
+Grandview Medical Center (FKA Trinity Medical Center)|Birmingham,AL|beds:407|util:85%|LOS:4.76|CMI:1.91|MC_pct:14%|MD_pct:17%|Proprietary - Corp|Urban
+UAB St Vincents East (FKA St Vincents East)|Birmingham,AL|beds:280|util:70%|LOS:5.32|CMI:1.85|MC_pct:15%|MD_pct:17%|Governmental - Sta|Urban
+UAB Hospital|Birmingham,AL|beds:1166|util:89%|LOS:8.02|CMI:2.74|MC_pct:14%|MD_pct:14%|teaching|Governmental - Sta|Urban
+Baptist Health Brookwood Hospital (FKA Brookwood Baptist Medical Center)|Homewood,AL|beds:429|util:37%|LOS:4.15|CMI:1.99|MC_pct:10%|MD_pct:14%|Voluntary Nonprofi|Urban
+North Alabama Medical Center (FKA Eliza Coffee Memorial Hospital)|Florence,AL|beds:223|util:80%|LOS:4.72|CMI:1.75|MC_pct:21%|MD_pct:27%|Proprietary - Corp|Urban
+East Alabama Medical Center - Opelika|Opelika,AL|beds:295|util:67%|LOS:5.73|CMI:1.68|MC_pct:11%|MD_pct:17%|Governmental - Cou|Urban
+Huntsville Hospital|Huntsville,AL|beds:905|util:82%|LOS:5.23|CMI:1.98|MC_pct:14%|MD_pct:20%|Governmental - Oth|Urban
+USA Health University Hospital (FKA University of South Alabama Medical Center)|Mobile,AL|beds:274|util:92%|LOS:7.53|CMI:2.18|MC_pct:15%|MD_pct:13%|teaching|Governmental - Sta|Urban
+Providence Hospital|Mobile,AL|beds:276|util:65%|LOS:5.5|CMI:1.88|MC_pct:15%|MD_pct:16%|Governmental - Sta|Urban
+Mobile Infirmary|Mobile,AL|beds:462|util:82%|LOS:6.93|CMI:1.94|MC_pct:13%|MD_pct:19%|Voluntary Nonprofi|Urban
+Baptist Medical Center South|Montgomery,AL|beds:328|util:86%|LOS:6.69|CMI:1.99|MC_pct:13%|MD_pct:16%|Governmental - Hos|Urban
+Decatur Morgan Hospital - Decatur Campus (FKA Decatur General Hospital)|Decatur,AL|beds:310|util:33%|LOS:4.65|CMI:1.61|MC_pct:14%|MD_pct:28%|Governmental - Oth|Urban
+Baptist Health Shelby Hospital (FKA Shelby Baptist Medical Center)|Alabaster,AL|beds:212|util:46%|LOS:5.02|CMI:2.1|MC_pct:11%|MD_pct:18%|Voluntary Nonprofi|Urban
+DCH Regional Medical Center|Tuscaloosa,AL|beds:472|util:69%|LOS:5.23|CMI:1.75|MC_pct:17%|MD_pct:21%|Governmental - Cit|Urban
+Northport Medical Center|Northport,AL|beds:204|util:0%|LOS:0|CMI:0|MC_pct:0%|MD_pct:0%|Governmental - Cit|Urban
+Baptist Health Walker Hospital (FKA Walker Baptist Medical Center)|Jasper,AL|beds:207|util:30%|LOS:4.03|CMI:1.61|MC_pct:13%|MD_pct:18%|Voluntary Nonprofi|Rural
+Providence Alaska Medical Center|Anchorage,AK|beds:401|util:74%|LOS:7.16|CMI:2.25|MC_pct:19%|MD_pct:35%|Voluntary Nonprofi|Urban
+Flagstaff Medical Center|Flagstaff,AZ|beds:242|util:66%|LOS:4.94|CMI:2.09|MC_pct:17%|MD_pct:25%|Voluntary Nonprofi|Urban
+Banner Desert Medical Center|Mesa,AZ|beds:629|util:78%|LOS:5.45|CMI:2.12|MC_pct:9%|MD_pct:15%|Voluntary Nonprofi|Urban
+Banner Boswell Medical Center|Sun City,AZ|beds:410|util:68%|LOS:5.02|CMI:1.91|MC_pct:22%|MD_pct:27%|Voluntary Nonprofi|Urban
+St Josephs Hospital and Medical Center|Phoenix,AZ|beds:524|util:89%|LOS:5.19|CMI:2.46|MC_pct:13%|MD_pct:14%|teaching|Voluntary Nonprofi|Urban
+Chandler Regional Medical Center|Chandler,AZ|beds:429|util:85%|LOS:4.25|CMI:1.89|MC_pct:17%|MD_pct:21%|Voluntary Nonprofi|Urban
+HonorHealth Scottsdale Osborn Medical Center|Scottsdale,AZ|beds:337|util:56%|LOS:4.5|CMI:1.87|MC_pct:19%|MD_pct:29%|Voluntary Nonprofi|Urban
+Valleywise Health Medical Center (FKA Maricopa Medical Center)|Phoenix,AZ|beds:240|util:79%|LOS:4.58|CMI:1.84|MC_pct:0%|MD_pct:5%|Governmental - Hos|Urban
+ealth John C Lincoln Medical Center (FKA John C Lincoln North Mountain Hospital)|Phoenix,AZ|beds:239|util:71%|LOS:5.07|CMI:1.93|MC_pct:8%|MD_pct:22%|Voluntary Nonprofi|Urban
+r - University Medical Center Phoenix (FKA Banner Good Samaritan Medical Center)|Phoenix,AZ|beds:656|util:85%|LOS:6.19|CMI:2.68|MC_pct:12%|MD_pct:12%|teaching|Voluntary Nonprofi|Urban
+HonorHealth Scottsdale Shea Medical Center|Scottsdale,AZ|beds:427|util:52%|LOS:4.01|CMI:2.08|MC_pct:19%|MD_pct:29%|Voluntary Nonprofi|Urban
+Banner Baywood Medical Center|Mesa,AZ|beds:337|util:52%|LOS:5.15|CMI:1.71|MC_pct:18%|MD_pct:27%|Voluntary Nonprofi|Urban
+Banner Thunderbird Medical Center|Glendale,AZ|beds:539|util:66%|LOS:5.15|CMI:2.01|MC_pct:8%|MD_pct:14%|Voluntary Nonprofi|Urban
+HonorHealth Deer Valley Medical Center|Phoenix,AZ|beds:204|util:88%|LOS:4.75|CMI:2.01|MC_pct:15%|MD_pct:24%|Voluntary Nonprofi|Urban
+Banner Del E Webb Medical Center|Sun City West,AZ|beds:337|util:58%|LOS:4.43|CMI:1.69|MC_pct:19%|MD_pct:28%|Voluntary Nonprofi|Urban
+Abrazo Arrowhead Campus (FKA Arrowhead Hospital)|Glendale,AZ|beds:217|util:58%|LOS:4.0|CMI:2.54|MC_pct:21%|MD_pct:18%|Proprietary - Corp|Urban
+Mayo Clinic Hospital - Arizona|Phoenix,AZ|beds:362|util:83%|LOS:5.51|CMI:2.3|MC_pct:15%|MD_pct:48%|teaching|Voluntary Nonprofi|Urban
+Abrazo West Campus (FKA West Valley Hospital)|Goodyear,AZ|beds:207|util:82%|LOS:4.29|CMI:1.96|MC_pct:16%|MD_pct:18%|Proprietary - Corp|Urban
+Banner Estrella Medical Center|Phoenix,AZ|beds:317|util:65%|LOS:4.37|CMI:1.94|MC_pct:8%|MD_pct:12%|Voluntary Nonprofi|Urban
+Banner Gateway Medical Center|Gilbert,AZ|beds:286|util:54%|LOS:4.61|CMI:2.05|MC_pct:14%|MD_pct:17%|Voluntary Nonprofi|Urban
+Northwest Medical Center|Tucson,AZ|beds:252|util:63%|LOS:4.52|CMI:1.91|MC_pct:20%|MD_pct:24%|Proprietary - Corp|Urban
+er - University Medical Center Tucson (FKA University of Arizona Medical Center)|Tucson,AZ|beds:548|util:89%|LOS:6.41|CMI:2.43|MC_pct:16%|MD_pct:14%|teaching|Voluntary Nonprofi|Urban
+Tucson Medical Center (AKA TMC HealthCare)|Tucson,AZ|beds:501|util:80%|LOS:4.02|CMI:2.02|MC_pct:17%|MD_pct:20%|Voluntary Nonprofi|Urban
+St Marys Hospital|Tucson,AZ|beds:357|util:31%|LOS:4.62|CMI:1.9|MC_pct:13%|MD_pct:17%|Proprietary - Corp|Urban
+St Joseph Hospital|Tucson,AZ|beds:430|util:32%|LOS:4.78|CMI:2.11|MC_pct:13%|MD_pct:18%|Proprietary - Corp|Urban
+Mercy Hospital Northwest Arkansas (FKA Mercy Medical Center)|Rogers,AR|beds:263|util:63%|LOS:3.45|CMI:1.82|MC_pct:18%|MD_pct:21%|Voluntary Nonprofi|Urban
+NEA Baptist Memorial Hospital|Jonesboro,AR|beds:228|util:75%|LOS:4.48|CMI:1.67|MC_pct:27%|MD_pct:32%|Voluntary Nonprofi|Urban
+St Bernards Medical Center|Jonesboro,AR|beds:389|util:74%|LOS:4.87|CMI:1.93|MC_pct:24%|MD_pct:25%|Voluntary Nonprofi|Urban
+CHI St Vincent Hot Springs (FKA Mercy Hospital Hot Springs)|Hot Springs,AR|beds:206|util:74%|LOS:4.12|CMI:1.82|MC_pct:26%|MD_pct:32%|Voluntary Nonprofi|Urban
+University of Arkansas for Medical Sciences Medical Center (AKA UAMS)|Little Rock,AR|beds:450|util:74%|LOS:5.91|CMI:2.58|MC_pct:19%|MD_pct:18%|teaching|Governmental - Sta|Urban
+CHI St Vincent Infirmary|Little Rock,AR|beds:338|util:64%|LOS:5.92|CMI:2.56|MC_pct:27%|MD_pct:26%|Voluntary Nonprofi|Urban
+Baptist Health Medical Center - Little Rock|Little Rock,AR|beds:809|util:57%|LOS:6.32|CMI:2.13|MC_pct:18%|MD_pct:24%|Voluntary Nonprofi|Urban
+Baptist Health - Fort Smith (FKA Sparks Regional Medical Center)|Fort Smith,AR|beds:279|util:45%|LOS:4.44|CMI:1.91|MC_pct:21%|MD_pct:28%|Voluntary Nonprofi|Urban
+Mercy Hospital Fort Smith (FKA St Edward Mercy Medical Center)|Fort Smith,AR|beds:282|util:90%|LOS:3.34|CMI:1.75|MC_pct:22%|MD_pct:21%|Voluntary Nonprofi|Urban
+Northwest Medical Center - Springdale|Springdale,AR|beds:222|util:45%|LOS:4.27|CMI:1.71|MC_pct:11%|MD_pct:13%|Proprietary - Corp|Urban
+Washington Regional Medical Center|Fayetteville,AR|beds:377|util:55%|LOS:5.08|CMI:2.15|MC_pct:21%|MD_pct:23%|Voluntary Nonprofi|Urban
+Unity Health - White County Medical Center|Searcy,AR|beds:245|util:63%|LOS:3.65|CMI:1.47|MC_pct:26%|MD_pct:27%|Voluntary Nonprofi|Rural
+Alta Bates Summit Medical Center - Alta Bates Campus|Berkeley,CA|beds:315|util:46%|LOS:5.22|CMI:1.74|MC_pct:11%|MD_pct:18%|Voluntary Nonprofi|Urban
+Oakland Medical Center|Oakland,CA|beds:365|util:72%|LOS:4.7|CMI:1.66|MC_pct:5%|MD_pct:7%|Voluntary Nonprofi|Urban
+John Muir Health - Concord Medical Center|Concord,CA|beds:247|util:64%|LOS:4.92|CMI:2.0|MC_pct:20%|MD_pct:37%|Voluntary Nonprofi|Urban
+Walnut Creek Medical Center|Walnut Creek,CA|beds:249|util:60%|LOS:4.6|CMI:1.78|MC_pct:1%|MD_pct:3%|Voluntary Nonprofi|Urban
+John Muir Health - Walnut Creek Medical Center|Walnut Creek,CA|beds:335|util:79%|LOS:4.54|CMI:1.84|MC_pct:16%|MD_pct:34%|Voluntary Nonprofi|Urban
+Community Regional Medical Center|Fresno,CA|beds:663|util:87%|LOS:6.99|CMI:2.13|MC_pct:13%|MD_pct:16%|Voluntary Nonprofi|Urban
+Saint Agnes Medical Center|Fresno,CA|beds:401|util:64%|LOS:3.69|CMI:1.78|MC_pct:25%|MD_pct:30%|Voluntary Nonprofi|Urban
+Clovis Community Medical Center|Clovis,CA|beds:352|util:84%|LOS:5.35|CMI:1.78|MC_pct:20%|MD_pct:30%|Voluntary Nonprofi|Urban
+Adventist Health Bakersfield (FKA San Joaquin Community Hospital)|Bakersfield,CA|beds:254|util:77%|LOS:3.69|CMI:1.99|MC_pct:16%|MD_pct:22%|Voluntary Nonprofi|Urban
+Memorial Hospital - Bakersfield (FKA Bakersfield Memorial Hospital)|Bakersfield,CA|beds:385|util:52%|LOS:4.75|CMI:2.14|MC_pct:15%|MD_pct:21%|Voluntary Nonprofi|Urban
+Panorama City Medical Center|Los Angeles,CA|beds:218|util:53%|LOS:3.8|CMI:1.9|MC_pct:2%|MD_pct:3%|Voluntary Nonprofi|Urban
+Los Angeles Medical Center|Los Angeles,CA|beds:492|util:69%|LOS:5.69|CMI:2.21|MC_pct:5%|MD_pct:4%|Voluntary Nonprofi|Urban
+Downey Medical Center|Downey,CA|beds:424|util:56%|LOS:4.81|CMI:1.74|MC_pct:1%|MD_pct:3%|Voluntary Nonprofi|Urban
+St Mary Medical Center Long Beach|Long Beach,CA|beds:273|util:66%|LOS:6.11|CMI:1.97|MC_pct:11%|MD_pct:17%|Voluntary Nonprofi|Urban
+PIH Health Whittier Hospital (FKA Presbyterian Intercommunity Hospital)|Whittier,CA|beds:405|util:60%|LOS:4.32|CMI:1.87|MC_pct:0%|MD_pct:17%|Voluntary Nonprofi|Urban
+Helford Clinical Research Hospital (AKA City of Hope National Cancer Center)|Duarte,CA|beds:234|util:94%|LOS:8.52|CMI:3.05|MC_pct:0%|MD_pct:30%|Voluntary Nonprofi|Urban
+California Hospital Medical Center|Los Angeles,CA|beds:318|util:65%|LOS:5.45|CMI:2.0|MC_pct:4%|MD_pct:7%|Voluntary Nonprofi|Urban
+Adventist Health White Memorial (FKA White Memorial Medical Center)|Los Angeles,CA|beds:353|util:69%|LOS:4.36|CMI:1.84|MC_pct:11%|MD_pct:12%|Voluntary Nonprofi|Urban
+St Francis Medical Center|Lynwood,CA|beds:384|util:72%|LOS:5.86|CMI:2.04|MC_pct:9%|MD_pct:10%|Voluntary Nonprofi|Urban
+UCLA Health - Santa Monica Medical Center|Santa Monica,CA|beds:281|util:80%|LOS:6.18|CMI:2.17|MC_pct:20%|MD_pct:33%|teaching|Governmental - Sta|Urban
+Northridge Hospital Medical Center|Northridge,CA|beds:319|util:59%|LOS:4.95|CMI:1.99|MC_pct:17%|MD_pct:28%|Voluntary Nonprofi|Urban
+Glendale Memorial Hospital and Health Center|Glendale,CA|beds:241|util:40%|LOS:4.2|CMI:1.71|MC_pct:18%|MD_pct:30%|Voluntary Nonprofi|Urban
+Providence Saint Joseph Medical Center|Burbank,CA|beds:368|util:52%|LOS:4.68|CMI:1.92|MC_pct:23%|MD_pct:0%|Voluntary Nonprofi|Urban
+USC Arcadia Hospital (FKA Methodist Hospital of Southern California)|Arcadia,CA|beds:318|util:58%|LOS:4.73|CMI:1.83|MC_pct:28%|MD_pct:38%|Voluntary Nonprofi|Urban
+Adventist Health Glendale (FKA Glendale Adventist Medical Center)|Glendale,CA|beds:318|util:68%|LOS:4.88|CMI:1.91|MC_pct:29%|MD_pct:39%|Voluntary Nonprofi|Urban
+College Medical Center (FKA Pacific Hospital of Long Beach)|Long Beach,CA|beds:220|util:77%|LOS:7.78|CMI:1.31|MC_pct:8%|MD_pct:7%|Proprietary - Othe|Urban
+Providence Holy Cross Medical Center|Mission Hills,CA|beds:297|util:71%|LOS:5.13|CMI:2.06|MC_pct:12%|MD_pct:0%|Voluntary Nonprofi|Urban
+Providence Saint Johns Health Center (FKA St Johns Health Center)|Santa Monica,CA|beds:228|util:60%|LOS:4.55|CMI:2.04|MC_pct:29%|MD_pct:41%|Voluntary Nonprofi|Urban
+Ronald Reagan UCLA Medical Center|Los Angeles,CA|beds:446|util:100%|LOS:7.97|CMI:2.72|MC_pct:17%|MD_pct:22%|teaching|Governmental - Sta|Urban
+Providence Little Company of Mary Medical Center Torrance|Torrance,CA|beds:360|util:56%|LOS:4.86|CMI:1.92|MC_pct:14%|MD_pct:0%|Voluntary Nonprofi|Urban
+Torrance Memorial Medical Center|Torrance,CA|beds:493|util:70%|LOS:4.72|CMI:1.84|MC_pct:18%|MD_pct:25%|Voluntary Nonprofi|Urban
+Emanate Health Inter-Community Hospital (FKA Inter-Community Hospital)|Covina,CA|beds:481|util:59%|LOS:4.76|CMI:1.8|MC_pct:14%|MD_pct:17%|Voluntary Nonprofi|Urban
+Huntington Hospital (AKA Huntington Health)|Pasadena,CA|beds:458|util:70%|LOS:5.06|CMI:1.99|MC_pct:22%|MD_pct:29%|Voluntary Nonprofi|Urban
+South Bay Medical Center|Harbor City,CA|beds:257|util:55%|LOS:4.4|CMI:1.86|MC_pct:2%|MD_pct:4%|Voluntary Nonprofi|Urban
+PIH Health Good Samaritan Hospital|Los Angeles,CA|beds:308|util:41%|LOS:4.54|CMI:1.92|MC_pct:19%|MD_pct:21%|Voluntary Nonprofi|Urban
+UCLA West Valley Medical Center (FKA West Hills Hospital & Medical Center)|West Hills,CA|beds:231|util:57%|LOS:5.99|CMI:1.86|MC_pct:27%|MD_pct:40%|Governmental - Sta|Urban
+Long Beach Medical Center (FKA Long Beach Memorial Medical Center)|Long Beach,CA|beds:369|util:67%|LOS:5.77|CMI:2.01|MC_pct:16%|MD_pct:24%|Voluntary Nonprofi|Urban
+West Los Angeles Medical Center|Los Angeles,CA|beds:265|util:43%|LOS:4.21|CMI:1.86|MC_pct:2%|MD_pct:6%|Voluntary Nonprofi|Urban
+Baldwin Park Medical Center|Baldwin Park,CA|beds:271|util:44%|LOS:4.22|CMI:1.84|MC_pct:1%|MD_pct:4%|Voluntary Nonprofi|Urban
+Centinela Hospital Medical Center|Inglewood,CA|beds:282|util:72%|LOS:4.55|CMI:1.9|MC_pct:24%|MD_pct:24%|Proprietary - Corp|Urban
+Providence Cedars-Sinai Tarzana Medical Center|Tarzana,CA|beds:204|util:73%|LOS:4.39|CMI:1.75|MC_pct:26%|MD_pct:0%|Voluntary Nonprofi|Urban
+ical Center - Downtown Campus (FKA Silver Lake Medical Center - Downtown Campus)|Los Angeles,CA|beds:282|util:63%|LOS:9.94|CMI:1.37|MC_pct:36%|MD_pct:40%|Proprietary - Corp|Urban
+ital at Culver City (FKA Hollywood Community Hospital at Brotman Medical Center)|Culver City,CA|beds:420|util:0%|LOS:0|CMI:0|MC_pct:0%|MD_pct:0%|Proprietary - Corp|Urban
+Cedars-Sinai Medical Center|West Hollywood,CA|beds:913|util:88%|LOS:5.85|CMI:2.48|MC_pct:20%|MD_pct:38%|teaching|Voluntary Nonprofi|Urban
+Woodland Hills Medical Center|Woodland Hills,CA|beds:262|util:41%|LOS:4.3|CMI:1.87|MC_pct:2%|MD_pct:3%|Voluntary Nonprofi|Urban
+Keck Hospital of USC (FKA USC University Hospital)|Los Angeles,CA|beds:326|util:72%|LOS:7.21|CMI:2.94|MC_pct:21%|MD_pct:29%|teaching|Voluntary Nonprofi|Urban
+Olive View - UCLA Medical Center|Sylmar,CA|beds:238|util:59%|LOS:4.68|CMI:1.67|MC_pct:7%|MD_pct:13%|Governmental - Cou|Urban
+Providence St Jude Medical Center|Fullerton,CA|beds:290|util:70%|LOS:4.91|CMI:2.07|MC_pct:19%|MD_pct:0%|Voluntary Nonprofi|Urban
+Providence St Joseph Hospital Orange|Orange,CA|beds:330|util:74%|LOS:4.61|CMI:2.27|MC_pct:22%|MD_pct:0%|Voluntary Nonprofi|Urban
+AHMC Anaheim Regional Medical Center|Anaheim,CA|beds:223|util:28%|LOS:4.16|CMI:1.92|MC_pct:15%|MD_pct:19%|Proprietary - Corp|Urban
+Hoag Hospital Newport Beach|Newport Beach,CA|beds:443|util:74%|LOS:4.27|CMI:1.82|MC_pct:17%|MD_pct:31%|Voluntary Nonprofi|Urban
+UCI Health - Orange (FKA UCI Medical Center)|Orange,CA|beds:911|util:91%|LOS:5.85|CMI:2.29|MC_pct:15%|MD_pct:21%|teaching|Governmental - Sta|Urban
+Providence Mission Hospital Mission Viejo|Mission Viejo,CA|beds:523|util:66%|LOS:4.61|CMI:2.02|MC_pct:20%|MD_pct:0%|Voluntary Nonprofi|Urban
+Los Angeles General Medical Center (FKA LAC & USC Medical Center)|Los Angeles,CA|beds:545|util:75%|LOS:5.07|CMI:1.86|MC_pct:7%|MD_pct:10%|Governmental - Cou|Urban
+Harbor - UCLA Medical Center|Torrance,CA|beds:381|util:72%|LOS:5.04|CMI:1.87|MC_pct:6%|MD_pct:12%|Governmental - Cou|Urban
+Orange Coast Medical Center (FKA Orange Coast Memorial Medical Center)|Fountain Valley,CA|beds:221|util:63%|LOS:4.52|CMI:1.92|MC_pct:15%|MD_pct:28%|Voluntary Nonprofi|Urban
+Orange County - Anaheim Medical Center|Anaheim,CA|beds:219|util:53%|LOS:4.27|CMI:1.91|MC_pct:1%|MD_pct:2%|Voluntary Nonprofi|Urban
+addleback Medical Center (FKA Saddleback Memorial Medical Center - Laguna Hills)|Laguna Hills,CA|beds:248|util:48%|LOS:4.25|CMI:1.89|MC_pct:16%|MD_pct:23%|Voluntary Nonprofi|Urban
+Orange County Global Medical Center (FKA Western Medical Center Santa Ana)|Santa Ana,CA|beds:254|util:46%|LOS:4.97|CMI:2.0|MC_pct:12%|MD_pct:16%|Proprietary - Corp|Urban
+Sutter Roseville Medical Center|Roseville,CA|beds:352|util:93%|LOS:4.35|CMI:1.75|MC_pct:18%|MD_pct:32%|Voluntary Nonprofi|Urban
+Riverside Medical Center|Riverside,CA|beds:225|util:52%|LOS:4.53|CMI:1.94|MC_pct:2%|MD_pct:3%|Voluntary Nonprofi|Urban
+Hemet Global Medical Center (FKA Hemet Valley Medical Center)|Hemet,CA|beds:327|util:43%|LOS:5.42|CMI:1.69|MC_pct:21%|MD_pct:19%|Proprietary - Corp|Urban
+Desert Regional Medical Center|Palm Springs,CA|beds:326|util:80%|LOS:5.4|CMI:1.93|MC_pct:14%|MD_pct:19%|Proprietary - Corp|Urban
+Riverside Community Hospital|Riverside,CA|beds:531|util:77%|LOS:5.22|CMI:2.06|MC_pct:17%|MD_pct:18%|Proprietary - Corp|Urban
+Mercy General Hospital|Sacramento,CA|beds:342|util:62%|LOS:4.74|CMI:2.24|MC_pct:17%|MD_pct:26%|Voluntary Nonprofi|Urban
+Sutter Medical Center - Ose Adams Medical Pavilion (FKA Sutter General Hospital)|Sacramento,CA|beds:523|util:80%|LOS:4.98|CMI:2.44|MC_pct:13%|MD_pct:19%|Voluntary Nonprofi|Urban
+Sacramento Medical Center|Sacramento,CA|beds:283|util:61%|LOS:4.41|CMI:1.8|MC_pct:3%|MD_pct:6%|Voluntary Nonprofi|Urban
+Mercy San Juan Medical Center|Carmichael,CA|beds:384|util:74%|LOS:5.1|CMI:1.82|MC_pct:14%|MD_pct:22%|Voluntary Nonprofi|Urban
+South Sacramento Medical Center|Sacramento,CA|beds:233|util:77%|LOS:4.51|CMI:1.83|MC_pct:3%|MD_pct:6%|Voluntary Nonprofi|Urban
+University of California Davis Medical Center (AKA UC Davis Medical Center)|Sacramento,CA|beds:654|util:88%|LOS:6.03|CMI:2.43|MC_pct:16%|MD_pct:26%|teaching|Governmental - Sta|Urban
+Providence St Mary Medical Center|Apple Valley,CA|beds:214|util:79%|LOS:4.69|CMI:1.81|MC_pct:12%|MD_pct:0%|Voluntary Nonprofi|Urban
+Loma Linda University Medical Center|Loma Linda,CA|beds:320|util:94%|LOS:7.82|CMI:2.38|MC_pct:21%|MD_pct:20%|teaching|Voluntary Nonprofi|Urban
+St Bernardine Medical Center|San Bernardino,CA|beds:318|util:67%|LOS:5.11|CMI:1.89|MC_pct:12%|MD_pct:16%|Voluntary Nonprofi|Urban
+Fontana Medical Center|Fontana,CA|beds:664|util:56%|LOS:4.49|CMI:1.91|MC_pct:2%|MD_pct:3%|Voluntary Nonprofi|Urban
+Kaiser Permanente Zion Medical Center|San Diego,CA|beds:596|util:43%|LOS:4.33|CMI:1.76|MC_pct:2%|MD_pct:4%|Voluntary Nonprofi|Urban
+Scripps Mercy Hospital San Diego|San Diego,CA|beds:550|util:75%|LOS:5.38|CMI:1.9|MC_pct:14%|MD_pct:15%|Voluntary Nonprofi|Urban
+Sharp Memorial Hospital|San Diego,CA|beds:459|util:62%|LOS:4.49|CMI:1.92|MC_pct:9%|MD_pct:15%|Voluntary Nonprofi|Urban
+Sharp Chula Vista Medical Center|Chula Vista,CA|beds:349|util:73%|LOS:5.15|CMI:1.75|MC_pct:12%|MD_pct:19%|Voluntary Nonprofi|Urban
+Scripps Memorial Hospital La Jolla|La Jolla,CA|beds:372|util:80%|LOS:5.09|CMI:2.19|MC_pct:18%|MD_pct:31%|Voluntary Nonprofi|Urban
+Paradise Valley Hospital|National City,CA|beds:291|util:46%|LOS:5.7|CMI:1.55|MC_pct:14%|MD_pct:15%|Proprietary - Corp|Urban
+Hillcrest Medical Center at UC San Diego Health|San Diego,CA|beds:381|util:83%|LOS:6.43|CMI:2.48|MC_pct:16%|MD_pct:20%|teaching|Governmental - Sta|Urban
+Sharp Grossmont Hospital|La Mesa,CA|beds:448|util:74%|LOS:4.64|CMI:1.8|MC_pct:15%|MD_pct:26%|Voluntary Nonprofi|Urban
+Zuckerberg San Francisco General Hospital (FKA San Francisco General Hospital)|San Francisco,CA|beds:284|util:82%|LOS:6.46|CMI:1.72|MC_pct:14%|MD_pct:21%|teaching|Governmental - Cit|Urban
+San Francisco Medical Center|San Francisco,CA|beds:239|util:65%|LOS:5.18|CMI:2.26|MC_pct:4%|MD_pct:2%|Voluntary Nonprofi|Urban
+UCSF Helen Diller Medical Center|San Francisco,CA|beds:887|util:85%|LOS:7.79|CMI:2.79|MC_pct:13%|MD_pct:25%|teaching|Governmental - Sta|Urban
+Manteca Medical Center|Manteca,CA|beds:237|util:62%|LOS:4.16|CMI:1.72|MC_pct:1%|MD_pct:2%|Voluntary Nonprofi|Urban
+St Josephs Medical Center|Stockton,CA|beds:319|util:80%|LOS:4.9|CMI:2.22|MC_pct:24%|MD_pct:24%|Voluntary Nonprofi|Urban
+Mills-Peninsula Medical Center - Burlingame Campus|Burlingame,CA|beds:241|util:61%|LOS:4.49|CMI:1.94|MC_pct:14%|MD_pct:33%|Voluntary Nonprofi|Urban
+Santa Barbara Cottage Hospital|Santa Barbara,CA|beds:362|util:66%|LOS:4.91|CMI:1.93|MC_pct:21%|MD_pct:39%|Voluntary Nonprofi|Urban
+Good Samaritan Hospital|San Jose,CA|beds:314|util:67%|LOS:5.19|CMI:1.84|MC_pct:16%|MD_pct:31%|Proprietary - Corp|Urban
+Stanford Hospital - 300 Pasteur Dr|Palo Alto,CA|beds:705|util:95%|LOS:6.98|CMI:2.51|MC_pct:13%|MD_pct:34%|teaching|Voluntary Nonprofi|Urban
+San Jose Medical Center|San Jose,CA|beds:235|util:56%|LOS:4.13|CMI:1.85|MC_pct:2%|MD_pct:4%|Voluntary Nonprofi|Urban
+Health - Mountain View Hospital (FKA El Camino Hospital - Mountain View Campus)|Mountain View,CA|beds:405|util:62%|LOS:4.04|CMI:1.8|MC_pct:14%|MD_pct:33%|Governmental - Hos|Urban
+Santa Clara Medical Center|Santa Clara,CA|beds:357|util:72%|LOS:5.64|CMI:2.38|MC_pct:3%|MD_pct:3%|Voluntary Nonprofi|Urban
+Santa Clara Valley Medical Center|San Jose,CA|beds:1060|util:66%|LOS:5.37|CMI:1.74|MC_pct:8%|MD_pct:17%|Governmental - Cou|Urban
+Mercy Medical Center Redding|Redding,CA|beds:260|util:70%|LOS:5.21|CMI:2.03|MC_pct:27%|MD_pct:44%|Voluntary Nonprofi|Urban
+Providence Santa Rosa Memorial Hospital|Santa Rosa,CA|beds:233|util:63%|LOS:4.76|CMI:2.08|MC_pct:25%|MD_pct:0%|Voluntary Nonprofi|Urban
+Emanuel Medical Center|Turlock,CA|beds:209|util:41%|LOS:4.05|CMI:1.72|MC_pct:18%|MD_pct:30%|Proprietary - Corp|Urban
+Memorial Medical Center|Modesto,CA|beds:403|util:72%|LOS:4.91|CMI:1.88|MC_pct:16%|MD_pct:29%|Voluntary Nonprofi|Urban
+Doctors Medical Center Modesto|Modesto,CA|beds:380|util:75%|LOS:5.37|CMI:2.01|MC_pct:16%|MD_pct:21%|Proprietary - Corp|Urban
+Kaweah Health Medical Center (FKA Kaweah Delta Medical Center)|Visalia,CA|beds:430|util:64%|LOS:4.54|CMI:1.78|MC_pct:27%|MD_pct:29%|Governmental - Hos|Urban
+St Johns Regional Medical Center|Oxnard,CA|beds:276|util:68%|LOS:5.1|CMI:1.89|MC_pct:19%|MD_pct:34%|Voluntary Nonprofi|Urban
+Ventura County Medical Center|Ventura,CA|beds:272|util:62%|LOS:4.54|CMI:1.57|MC_pct:7%|MD_pct:15%|Governmental - Cit|Urban
+Los Robles Health System - Los Robles Regional Medical Center|Thousand Oaks,CA|beds:310|util:64%|LOS:4.9|CMI:1.84|MC_pct:26%|MD_pct:44%|Proprietary - Corp|Urban
+UCHealth University of Colorado Hospital|Aurora,CO|beds:773|util:85%|LOS:6.55|CMI:2.55|MC_pct:13%|MD_pct:18%|teaching|Governmental - Oth|Urban
+HCA HealthONE Aurora (FKA the Medical Center of Aurora)|Aurora,CO|beds:334|util:66%|LOS:5.17|CMI:1.94|MC_pct:15%|MD_pct:15%|Proprietary - Corp|Urban
+HCA HealthONE Swedish (FKA Swedish Medical Center)|Englewood,CO|beds:361|util:82%|LOS:5.23|CMI:2.12|MC_pct:13%|MD_pct:20%|Proprietary - Corp|Urban
+HCA HealthONE Sky Ridge (FKA Sky Ridge Medical Center)|Lone Tree,CO|beds:284|util:64%|LOS:3.94|CMI:1.92|MC_pct:11%|MD_pct:16%|Proprietary - Corp|Urban
+AdventHealth Littleton (FKA Littleton Adventist Hospital)|Littleton,CO|beds:201|util:55%|LOS:4.52|CMI:2.11|MC_pct:12%|MD_pct:24%|Voluntary Nonprofi|Urban
+HCA HealthONE Rose (FKA Rose Medical Center)|Denver,CO|beds:220|util:56%|LOS:3.03|CMI:1.83|MC_pct:10%|MD_pct:12%|Proprietary - Corp|Urban
+Intermountain Health Saint Joseph Hospital (FKA Saint Joseph Hospital)|Denver,CO|beds:352|util:55%|LOS:4.88|CMI:2.76|MC_pct:10%|MD_pct:9%|Voluntary Nonprofi|Urban
+Denver Health Main Campus|Denver,CO|beds:387|util:74%|LOS:5.56|CMI:1.91|MC_pct:3%|MD_pct:5%|teaching|Governmental - Sta|Urban
+HCA HealthONE Presbyterian St Lukes (FKA Presbyterian/St Lukes Medical Center)|Denver,CO|beds:311|util:62%|LOS:7.99|CMI:3.07|MC_pct:9%|MD_pct:13%|Proprietary - Corp|Urban
+St Anthony Hospital|Lakewood,CO|beds:220|util:94%|LOS:5.19|CMI:2.15|MC_pct:13%|MD_pct:27%|Voluntary Nonprofi|Urban
+UCHealth Memorial Hospital Central|Colorado Springs,CO|beds:526|util:65%|LOS:4.6|CMI:1.99|MC_pct:14%|MD_pct:20%|Voluntary Nonprofi|Urban
+Penrose Hospital|Colorado Springs,CO|beds:484|util:64%|LOS:4.96|CMI:2.06|MC_pct:14%|MD_pct:20%|Voluntary Nonprofi|Urban
+Intermountain Health Lutheran Hospital (FKA Lutheran Medical Center)|Golden,CO|beds:235|util:58%|LOS:4.44|CMI:1.91|MC_pct:8%|MD_pct:15%|Voluntary Nonprofi|Urban
+UCHealth Poudre Valley Hospital|Fort Collins,CO|beds:215|util:66%|LOS:4.81|CMI:1.73|MC_pct:14%|MD_pct:22%|Voluntary Nonprofi|Urban
+St Marys Regional Hospital (AKA St Marys Medical Center)|Grand Junction,CO|beds:252|util:64%|LOS:5.02|CMI:2.22|MC_pct:16%|MD_pct:24%|Voluntary Nonprofi|Urban
+UCHealth Parkview Medical Center (FKA Parkview Medical Center)|Pueblo,CO|beds:259|util:63%|LOS:4.9|CMI:1.93|MC_pct:14%|MD_pct:20%|Voluntary Nonprofi|Urban
+St Vincents Medical Center|Bridgeport,CT|beds:222|util:75%|LOS:5.11|CMI:2.11|MC_pct:17%|MD_pct:23%|Voluntary Nonprofi|Urban
+Bridgeport Hospital|Bridgeport,CT|beds:397|util:73%|LOS:5.59|CMI:1.79|MC_pct:17%|MD_pct:24%|Voluntary Nonprofi|Urban
+Danbury Hospital|Danbury,CT|beds:334|util:66%|LOS:5.06|CMI:1.93|MC_pct:22%|MD_pct:34%|teaching|Voluntary Nonprofi|Urban
+Hartford Hospital|Hartford,CT|beds:723|util:88%|LOS:5.37|CMI:2.17|MC_pct:16%|MD_pct:20%|Voluntary Nonprofi|Urban
+Saint Francis Hospital and Medical Center|Hartford,CT|beds:413|util:64%|LOS:5.02|CMI:2.07|MC_pct:17%|MD_pct:20%|teaching|Voluntary Nonprofi|Urban
+Yale New Haven Hospital|New Haven,CT|beds:581|util:80%|LOS:7.03|CMI:2.18|MC_pct:15%|MD_pct:19%|teaching|Voluntary Nonprofi|Urban
+Waterbury Hospital (AKA Waterbury HEALTH)|Waterbury,CT|beds:212|util:52%|LOS:4.97|CMI:1.78|MC_pct:21%|MD_pct:27%|Proprietary - Corp|Urban
+Yale New Haven Hospital - St Raphael Campus|New Haven,CT|beds:511|util:0%|LOS:0|CMI:0|MC_pct:0%|MD_pct:0%|Voluntary Nonprofi|Urban
+Lawrence & Memorial Hospital|New London,CT|beds:234|util:70%|LOS:4.9|CMI:1.69|MC_pct:16%|MD_pct:29%|Voluntary Nonprofi|Urban
+Bayhealth Hospital - Kent Campus|Dover,DE|beds:277|util:74%|LOS:5.18|CMI:1.83|MC_pct:18%|MD_pct:33%|Voluntary Nonprofi|Urban
+Christiana Hospital|Newark,DE|beds:906|util:80%|LOS:6.33|CMI:1.92|MC_pct:18%|MD_pct:30%|Voluntary Nonprofi|Urban
+Beebe Healthcare - Margaret H Rollins Lewes Campus (FKA Beebe Medical Center)|Lewes,DE|beds:201|util:65%|LOS:3.93|CMI:1.58|MC_pct:0%|MD_pct:46%|Voluntary Nonprofi|Rural
+The George Washington University Hospital|Washington,DC|beds:339|util:76%|LOS:5.7|CMI:2.2|MC_pct:22%|MD_pct:24%|teaching|Proprietary - Corp|Urban
+MedStar Georgetown University Hospital|Washington,DC|beds:474|util:79%|LOS:8.6|CMI:2.5|MC_pct:20%|MD_pct:29%|teaching|Voluntary Nonprofi|Urban
+Sibley Memorial Hospital|Washington,DC|beds:219|util:61%|LOS:5.0|CMI:1.7|MC_pct:20%|MD_pct:33%|Voluntary Nonprofi|Urban
+MedStar Washington Hospital Center|Washington,DC|beds:737|util:80%|LOS:8.21|CMI:2.83|MC_pct:22%|MD_pct:27%|teaching|Voluntary Nonprofi|Urban
+UF Health Shands Hospital (FKA Shands at the University of Florida)|Gainesville,FL|beds:742|util:86%|LOS:6.16|CMI:2.21|MC_pct:13%|MD_pct:20%|teaching|Voluntary Nonprofi|Urban
+HCA Florida North Florida Hospital (FKA North Florida Regional Medical Center)|Gainesville,FL|beds:472|util:83%|LOS:4.17|CMI:1.82|MC_pct:22%|MD_pct:27%|Proprietary - Corp|Urban
+HCA Florida Gulf Coast Hospital (FKA Gulf Coast Regional Medical Center)|Panama City,FL|beds:253|util:75%|LOS:4.51|CMI:1.76|MC_pct:15%|MD_pct:0%|Proprietary - Corp|Urban
+Holmes Regional Medical Center|Melbourne,FL|beds:550|util:72%|LOS:4.8|CMI:2.09|MC_pct:20%|MD_pct:26%|Voluntary Nonprofi|Urban
+HCA Florida Westside Hospital (FKA Westside Regional Medical Center)|Plantation,FL|beds:250|util:77%|LOS:4.46|CMI:1.99|MC_pct:19%|MD_pct:19%|Proprietary - Corp|Urban
+HCA Florida Northwest Hospital (FKA Northwest Medical Center)|Margate,FL|beds:289|util:56%|LOS:4.01|CMI:1.76|MC_pct:12%|MD_pct:13%|Proprietary - Corp|Urban
+Broward Health North (FKA North Broward Medical Center)|Deerfield Beach,FL|beds:304|util:61%|LOS:5.72|CMI:1.74|MC_pct:20%|MD_pct:20%|Governmental - Hos|Urban
+Holy Cross Health (AKA Holy Cross Hospital)|Fort Lauderdale,FL|beds:286|util:64%|LOS:4.63|CMI:1.81|MC_pct:20%|MD_pct:29%|Voluntary Nonprofi|Urban
+Memorial Regional Hospital|Hollywood,FL|beds:553|util:71%|LOS:6.59|CMI:1.86|MC_pct:8%|MD_pct:11%|teaching|Governmental - Hos|Urban
+Broward Health Medical Center (FKA Broward General Medical Center)|Fort Lauderdale,FL|beds:572|util:66%|LOS:6.48|CMI:1.98|MC_pct:11%|MD_pct:12%|Governmental - Hos|Urban
+Cleveland Clinic Florida - Weston (AKA Weston Hospital)|Weston,FL|beds:260|util:72%|LOS:4.93|CMI:2.39|MC_pct:19%|MD_pct:26%|Voluntary Nonprofi|Urban
+Broward Health Coral Springs (FKA Coral Springs Medical Center)|Coral Springs,FL|beds:224|util:59%|LOS:4.68|CMI:1.57|MC_pct:10%|MD_pct:14%|Governmental - Hos|Urban
+Memorial Hospital West|Pembroke Pines,FL|beds:486|util:77%|LOS:5.89|CMI:1.58|MC_pct:12%|MD_pct:14%|Governmental - Hos|Urban
+HCA Florida Fawcett Hospital (FKA Fawcett Memorial Hospital)|Port Charlotte,FL|beds:239|util:64%|LOS:4.64|CMI:1.92|MC_pct:22%|MD_pct:32%|Proprietary - Corp|Urban
+HCA Florida Citrus Hospital (FKA Citrus Memorial Hospital)|Inverness,FL|beds:204|util:69%|LOS:4.32|CMI:1.88|MC_pct:29%|MD_pct:32%|Proprietary - Corp|Urban
+HCA Florida Orange Park Hospital (FKA Orange Park Medical Center)|Orange Park,FL|beds:339|util:67%|LOS:4.75|CMI:1.85|MC_pct:16%|MD_pct:21%|Proprietary - Corp|Urban
+HCA Florida Memorial Hospital (FKA Memorial Hospital Jacksonville)|Jacksonville,FL|beds:360|util:78%|LOS:4.63|CMI:2.02|MC_pct:10%|MD_pct:17%|Proprietary - Corp|Urban
+Mayo Clinic Hospital - Florida|Jacksonville,FL|beds:307|util:97%|LOS:5.7|CMI:2.47|MC_pct:0%|MD_pct:42%|teaching|Voluntary Nonprofi|Urban
+UF Health Jacksonville|Jacksonville,FL|beds:519|util:93%|LOS:5.89|CMI:1.83|MC_pct:17%|MD_pct:14%|teaching|Voluntary Nonprofi|Urban
+Ascension St Vincents Riverside Hospital|Jacksonville,FL|beds:289|util:65%|LOS:4.83|CMI:2.26|MC_pct:19%|MD_pct:23%|Voluntary Nonprofi|Urban
+Ascension St Vincents Southside Hospital|Jacksonville,FL|beds:227|util:47%|LOS:4.18|CMI:1.96|MC_pct:10%|MD_pct:16%|Voluntary Nonprofi|Urban
+Ascension Sacred Heart Hospital Pensacola|Pensacola,FL|beds:583|util:64%|LOS:5.1|CMI:1.98|MC_pct:15%|MD_pct:18%|Voluntary Nonprofi|Urban
+Baptist Hospital|Pensacola,FL|beds:293|util:79%|LOS:4.33|CMI:2.05|MC_pct:20%|MD_pct:25%|Voluntary Nonprofi|Urban
+HCA Florida West Hospital (AKA West Florida Healthcare)|Pensacola,FL|beds:354|util:55%|LOS:4.32|CMI:1.75|MC_pct:17%|MD_pct:24%|Proprietary - Corp|Urban
+HCA Florida Oak Hill Hospital (FKA Oak Hill Hospital)|Brooksville,FL|beds:349|util:70%|LOS:4.44|CMI:1.66|MC_pct:22%|MD_pct:22%|Proprietary - Corp|Urban
+AdventHealth Sebring (FKA Florida Hospital Heartland Medical Center)|Sebring,FL|beds:204|util:78%|LOS:4.59|CMI:1.71|MC_pct:14%|MD_pct:28%|Voluntary Nonprofi|Urban
+Tampa General Hospital|Tampa,FL|beds:946|util:85%|LOS:5.12|CMI:2.26|MC_pct:15%|MD_pct:17%|teaching|Voluntary Nonprofi|Urban
+HCA Florida Brandon Hospital (FKA Brandon Regional Hospital)|Brandon,FL|beds:445|util:75%|LOS:4.44|CMI:1.76|MC_pct:14%|MD_pct:17%|Proprietary - Corp|Urban
+AdventHealth Tampa (FKA Florida Hospital Tampa)|Tampa,FL|beds:596|util:68%|LOS:4.87|CMI:2.0|MC_pct:9%|MD_pct:18%|Voluntary Nonprofi|Urban
+BayCare St Josephs Hospital|Tampa,FL|beds:527|util:58%|LOS:5.14|CMI:1.77|MC_pct:8%|MD_pct:17%|Voluntary Nonprofi|Urban
+er Center Magnolia Campus (AKA H Lee Moffitt Cancer Center & Research Institute)|Tampa,FL|beds:345|util:64%|LOS:6.35|CMI:3.32|MC_pct:0%|MD_pct:30%|Voluntary Nonprofi|Urban
+Cleveland Clinic Indian River Hospital (FKA Indian River Medical Center)|Vero Beach,FL|beds:310|util:61%|LOS:4.68|CMI:1.88|MC_pct:29%|MD_pct:36%|Voluntary Nonprofi|Urban
+UF Health Spanish Plaines Hospital (FKA UF Health the Villages Hospital)|Lady Lake,FL|beds:277|util:72%|LOS:5.38|CMI:1.54|MC_pct:27%|MD_pct:36%|Voluntary Nonprofi|Urban
+UF Health Leesburg Hospital (FKA Leesburg Regional Medical Center)|Leesburg,FL|beds:330|util:65%|LOS:5.63|CMI:1.87|MC_pct:23%|MD_pct:29%|Voluntary Nonprofi|Urban
+AdventHealth Waterman (FKA Florida Hospital Waterman)|Tavares,FL|beds:288|util:79%|LOS:4.44|CMI:1.66|MC_pct:18%|MD_pct:22%|Voluntary Nonprofi|Urban
+Orlando Health South Lake Hospital|Clermont,FL|beds:225|util:78%|LOS:3.3|CMI:1.6|MC_pct:14%|MD_pct:26%|Voluntary Nonprofi|Urban
+HCA Florida Capital Hospital (FKA Capital Regional Medical Center)|Tallahassee,FL|beds:256|util:78%|LOS:4.45|CMI:1.67|MC_pct:10%|MD_pct:16%|Proprietary - Corp|Urban
+Tallahassee Memorial HealthCare|Tallahassee,FL|beds:468|util:63%|LOS:4.11|CMI:1.99|MC_pct:11%|MD_pct:16%|Voluntary Nonprofi|Urban
+HCA Florida Blake Hospital (FKA Blake Medical Center)|Bradenton,FL|beds:355|util:53%|LOS:4.15|CMI:1.89|MC_pct:22%|MD_pct:26%|Proprietary - Corp|Urban
+Manatee Memorial Hospital|Bradenton,FL|beds:295|util:81%|LOS:4.48|CMI:1.94|MC_pct:24%|MD_pct:21%|Proprietary - Corp|Urban
+AdventHealth Ocala (FKA Munroe Regional Medical Center)|Ocala,FL|beds:351|util:72%|LOS:4.75|CMI:1.79|MC_pct:13%|MD_pct:21%|Voluntary Nonprofi|Urban
+HCA Florida Ocala Hospital (FKA Ocala Regional Medical Center)|Ocala,FL|beds:200|util:81%|LOS:4.16|CMI:1.73|MC_pct:22%|MD_pct:27%|Proprietary - Corp|Urban
+Cleveland Clinic Martin North Hospital (FKA Martin Medical Center)|Stuart,FL|beds:244|util:67%|LOS:4.26|CMI:1.68|MC_pct:25%|MD_pct:31%|Voluntary Nonprofi|Urban
+North Shore Medical Center|Miami,FL|beds:305|util:25%|LOS:4.68|CMI:1.91|MC_pct:12%|MD_pct:15%|Proprietary - Othe|Urban
+Jackson Memorial Hospital|Miami,FL|beds:1595|util:71%|LOS:5.92|CMI:1.91|MC_pct:16%|MD_pct:10%|teaching|Governmental - Cou|Urban
+Baptist Hospital|Miami,FL|beds:690|util:80%|LOS:6.98|CMI:2.07|MC_pct:7%|MD_pct:17%|Voluntary Nonprofi|Urban
+Hialeah Hospital|Hialeah,FL|beds:340|util:23%|LOS:4.34|CMI:1.69|MC_pct:11%|MD_pct:15%|Proprietary - Corp|Urban
+HCA Florida Mercy Hospital (FKA Mercy Hospital)|Miami,FL|beds:488|util:62%|LOS:4.31|CMI:1.72|MC_pct:8%|MD_pct:11%|Proprietary - Corp|Urban
+Sylvester Comprehensive Cancer Center|Miami,FL|beds:538|util:67%|LOS:6.72|CMI:2.41|MC_pct:0%|MD_pct:17%|teaching|Voluntary Nonprofi|Urban
+HCA Florida Kendall Hospital (FKA Kendall Regional Medical Center)|Miami,FL|beds:424|util:64%|LOS:4.54|CMI:2.02|MC_pct:8%|MD_pct:9%|Proprietary - Corp|Urban
+Coral Gables Hospital|Coral Gables,FL|beds:245|util:16%|LOS:3.88|CMI:1.54|MC_pct:10%|MD_pct:25%|Proprietary - Othe|Urban
+Palmetto General Hospital|Hialeah,FL|beds:358|util:50%|LOS:4.62|CMI:2.2|MC_pct:11%|MD_pct:11%|Proprietary - Othe|Urban
+South Miami Hospital|South Miami,FL|beds:336|util:56%|LOS:4.39|CMI:1.89|MC_pct:6%|MD_pct:15%|Voluntary Nonprofi|Urban
+HCA Florida Aventura Hospital (FKA Aventura Hospital and Medical Center)|Miami,FL|beds:324|util:60%|LOS:4.23|CMI:1.83|MC_pct:18%|MD_pct:24%|Proprietary - Corp|Urban
+HCA Florida Fort Walton-Destin Hospital (FKA Fort Walton Beach Medical Center)|Fort Walton Beach,FL|beds:248|util:60%|LOS:4.69|CMI:1.8|MC_pct:17%|MD_pct:0%|Proprietary - Corp|Urban
+Orlando Health Orlando Regional Medical Center|Orlando,FL|beds:808|util:80%|LOS:4.22|CMI:1.96|MC_pct:8%|MD_pct:12%|Voluntary Nonprofi|Urban
+AdventHealth Orlando (FKA Florida Hospital Orlando)|Orlando,FL|beds:2247|util:81%|LOS:5.21|CMI:1.94|MC_pct:9%|MD_pct:19%|Voluntary Nonprofi|Urban
+Orlando Health - Health Central Hospital|Ocoee,FL|beds:276|util:59%|LOS:3.33|CMI:1.48|MC_pct:8%|MD_pct:17%|Voluntary Nonprofi|Urban
+HCA Florida Osceola Hospital (FKA Osceola Regional Medical Center)|Kissimmee,FL|beds:345|util:81%|LOS:4.62|CMI:1.97|MC_pct:13%|MD_pct:0%|Proprietary - Corp|Urban
+Delray Medical Center|Delray Beach,FL|beds:352|util:72%|LOS:4.63|CMI:1.84|MC_pct:21%|MD_pct:36%|Proprietary - Corp|Urban
+Good Samaritan Medical Center|West Palm Beach,FL|beds:333|util:36%|LOS:4.32|CMI:1.82|MC_pct:15%|MD_pct:24%|Proprietary - Corp|Urban
+St Marys Medical Center|Mangonia Park,FL|beds:381|util:64%|LOS:5.21|CMI:1.98|MC_pct:5%|MD_pct:9%|Proprietary - Corp|Urban
+Wellington Regional Medical Center|Wellington,FL|beds:235|util:75%|LOS:4.01|CMI:1.65|MC_pct:14%|MD_pct:15%|Proprietary - Corp|Urban
+HCA Florida Palms West Hospital (FKA Palms West Hospital)|Loxahatchee,FL|beds:206|util:71%|LOS:3.91|CMI:1.65|MC_pct:10%|MD_pct:12%|Proprietary - Corp|Urban
+Boca Raton Regional Hospital|Boca Raton,FL|beds:361|util:58%|LOS:4.45|CMI:1.77|MC_pct:30%|MD_pct:46%|teaching|Voluntary Nonprofi|Urban
+Bethesda Hospital East (FKA Bethesda Memorial Hospital)|Boynton Beach,FL|beds:367|util:61%|LOS:4.59|CMI:1.69|MC_pct:25%|MD_pct:28%|Voluntary Nonprofi|Urban
+HCA Florida JFK Hospital (FKA JFK Medical Center)|Lake Worth,FL|beds:486|util:62%|LOS:4.35|CMI:1.92|MC_pct:17%|MD_pct:21%|Proprietary - Corp|Urban
+Morton Plant North Bay Hospital|New Port Richey,FL|beds:222|util:68%|LOS:4.65|CMI:1.46|MC_pct:12%|MD_pct:17%|Voluntary Nonprofi|Urban
+HCA Florida Trinity Hospital (FKA Medical Center of Trinity)|New Port Richey,FL|beds:264|util:57%|LOS:3.84|CMI:1.64|MC_pct:15%|MD_pct:18%|Proprietary - Corp|Urban
+HCA Florida Bayonet Point Hospital (FKA Regional Medical Center Bayonet Point)|Hudson,FL|beds:337|util:65%|LOS:4.73|CMI:1.84|MC_pct:18%|MD_pct:19%|Proprietary - Corp|Urban
+BayCare Mease Countryside Hospital|Safety Harbor,FL|beds:361|util:64%|LOS:4.55|CMI:1.6|MC_pct:14%|MD_pct:28%|Voluntary Nonprofi|Urban
+HCA Florida Northside Hospital (FKA Northside Hospital)|Saint Petersburg,FL|beds:241|util:56%|LOS:4.42|CMI:1.86|MC_pct:19%|MD_pct:23%|Proprietary - Corp|Urban
+HCA Florida Largo Hospital (FKA Largo Medical Center)|Largo,FL|beds:250|util:70%|LOS:5.31|CMI:2.25|MC_pct:21%|MD_pct:23%|Proprietary - Corp|Urban
+Morton Plant Hospital|Clearwater,FL|beds:569|util:60%|LOS:4.7|CMI:1.84|MC_pct:16%|MD_pct:26%|Voluntary Nonprofi|Urban
+BayCare St Anthonys Hospital|Saint Petersburg,FL|beds:441|util:53%|LOS:4.37|CMI:1.69|MC_pct:15%|MD_pct:27%|Voluntary Nonprofi|Urban
+Orlando Health Bayfront Hospital (FKA Bayfront Health St Petersburg)|Saint Petersburg,FL|beds:264|util:65%|LOS:4.36|CMI:1.76|MC_pct:12%|MD_pct:15%|Voluntary Nonprofi|Urban
+BayCare Winter Haven Hospital|Winter Haven,FL|beds:447|util:56%|LOS:4.46|CMI:1.74|MC_pct:13%|MD_pct:18%|Voluntary Nonprofi|Urban
+AdventHealth Heart of Florida (FKA Heart of Florida Regional Medical Center)|Davenport,FL|beds:202|util:62%|LOS:4.33|CMI:1.76|MC_pct:0%|MD_pct:17%|Voluntary Nonprofi|Urban
+UF Health Flagler Hospital (FKA Flagler Health)|Saint Augustine,FL|beds:335|util:48%|LOS:5.06|CMI:1.81|MC_pct:26%|MD_pct:30%|Voluntary Nonprofi|Urban
+orida Lawnwood Hospital (FKA Lawnwood Regional Medical Center & Heart Institute)|Fort Pierce,FL|beds:416|util:81%|LOS:4.55|CMI:1.91|MC_pct:12%|MD_pct:18%|Proprietary - Corp|Urban
+HCA Florida St Lucie Hospital (FKA St Lucie Medical Center)|Port Saint Lucie,FL|beds:222|util:65%|LOS:3.89|CMI:1.5|MC_pct:15%|MD_pct:27%|Proprietary - Corp|Urban
+Sarasota Memorial Hospital|Sarasota,FL|beds:791|util:74%|LOS:4.54|CMI:1.84|MC_pct:25%|MD_pct:36%|Governmental - Cou|Urban
+AdventHealth Fish Memorial (FKA Florida Hospital Fish Memorial)|Orange City,FL|beds:253|util:58%|LOS:4.44|CMI:1.66|MC_pct:11%|MD_pct:23%|Voluntary Nonprofi|Urban
+AdventHealth Daytona Beach (FKA Florida Hospital Memorial Medical Center)|Daytona Beach,FL|beds:277|util:94%|LOS:4.91|CMI:2.06|MC_pct:15%|MD_pct:26%|Voluntary Nonprofi|Urban
+Halifax Health Medical Center of Daytona Beach|Daytona Beach,FL|beds:567|util:65%|LOS:5.73|CMI:1.83|MC_pct:13%|MD_pct:18%|Governmental - Hos|Urban
+trium Health Navicent the Medical Center (FKA Medical Center of Central Georgia)|Macon,GA|beds:673|util:74%|LOS:8.14|CMI:2.12|MC_pct:14%|MD_pct:16%|teaching|Governmental - Oth|Urban
+Tanner Medical Center - Carrollton|Carrollton,GA|beds:209|util:76%|LOS:5.4|CMI:1.75|MC_pct:11%|MD_pct:21%|Voluntary Nonprofi|Rural
+Candler Hospital|Savannah,GA|beds:263|util:63%|LOS:8.48|CMI:1.71|MC_pct:13%|MD_pct:18%|Voluntary Nonprofi|Urban
+Memorial Health University Medical Center (AKA Memorial Health)|Savannah,GA|beds:616|util:93%|LOS:5.64|CMI:2.18|MC_pct:13%|MD_pct:13%|teaching|Governmental - Cou|Urban
+St Josephs Hospital|Savannah,GA|beds:231|util:76%|LOS:5.82|CMI:1.97|MC_pct:17%|MD_pct:28%|Voluntary Nonprofi|Urban
+Northside Hospital Cherokee|Canton,GA|beds:329|util:80%|LOS:6.06|CMI:1.75|MC_pct:9%|MD_pct:25%|Voluntary Nonprofi|Urban
+Piedmont Athens Regional Medical Center (FKA Athens Regional Medical Center)|Athens,GA|beds:407|util:77%|LOS:4.7|CMI:1.85|MC_pct:14%|MD_pct:21%|Governmental - Cit|Urban
+Southern Regional Medical Center|Riverdale,GA|beds:233|util:32%|LOS:5.07|CMI:1.86|MC_pct:9%|MD_pct:10%|Voluntary Nonprofi|Urban
+Wellstar Cobb Hospital|Austell,GA|beds:367|util:82%|LOS:5.53|CMI:1.87|MC_pct:6%|MD_pct:14%|Governmental - Oth|Urban
+Wellstar Kennestone Regional Medical Center|Marietta,GA|beds:633|util:96%|LOS:5.16|CMI:2.02|MC_pct:14%|MD_pct:22%|Governmental - Oth|Urban
+Piedmont Newnan Hospital|Newnan,GA|beds:227|util:70%|LOS:4.58|CMI:1.66|MC_pct:12%|MD_pct:22%|Voluntary Nonprofi|Urban
+Emory Decatur Hospital (FKA DeKalb Medical Center North Decatur)|Decatur,GA|beds:401|util:59%|LOS:5.97|CMI:1.75|MC_pct:9%|MD_pct:12%|Governmental - Oth|Urban
+Emory University Hospital|Atlanta,GA|beds:666|util:83%|LOS:7.93|CMI:2.73|MC_pct:15%|MD_pct:19%|teaching|Voluntary Nonprofi|Urban
+Phoebe Putney Memorial Hospital - North Campus (AKA Phoebe North)|Albany,GA|beds:248|util:0%|LOS:0|CMI:0|MC_pct:0%|MD_pct:0%|Voluntary Nonprofi|Urban
+Phoebe Putney Memorial Hospital|Albany,GA|beds:360|util:72%|LOS:6.42|CMI:1.83|MC_pct:11%|MD_pct:14%|Voluntary Nonprofi|Urban
+Piedmont Fayette Hospital|Fayetteville,GA|beds:221|util:88%|LOS:4.73|CMI:1.68|MC_pct:12%|MD_pct:21%|Voluntary Nonprofi|Urban
+AdventHealth Redmond (FKA Redmond Regional Medical Center)|Rome,GA|beds:210|util:74%|LOS:4.71|CMI:1.99|MC_pct:20%|MD_pct:26%|Voluntary Nonprofi|Urban
+Atrium Health Floyd Medical Center|Rome,GA|beds:227|util:91%|LOS:4.89|CMI:1.6|MC_pct:10%|MD_pct:16%|Voluntary Nonprofi|Urban
+Northside Hospital Forsyth|Cumming,GA|beds:304|util:81%|LOS:6.54|CMI:1.72|MC_pct:12%|MD_pct:25%|Voluntary Nonprofi|Urban
+Emory University Hospital Midtown (FKA Emory Crawford Long Hospital)|Atlanta,GA|beds:548|util:85%|LOS:5.79|CMI:2.5|MC_pct:12%|MD_pct:13%|teaching|Voluntary Nonprofi|Urban
+Emory Saint Josephs Hospital (AKA St Josephs Hospital of Atlanta)|Atlanta,GA|beds:355|util:75%|LOS:5.56|CMI:2.22|MC_pct:14%|MD_pct:24%|Voluntary Nonprofi|Urban
+Piedmont Atlanta Hospital (AKA Piedmont Hospital)|Atlanta,GA|beds:488|util:80%|LOS:6.09|CMI:2.6|MC_pct:14%|MD_pct:20%|Voluntary Nonprofi|Urban
+Northside Hospital Atlanta|Atlanta,GA|beds:685|util:76%|LOS:6.83|CMI:1.98|MC_pct:6%|MD_pct:11%|Voluntary Nonprofi|Urban
+Southeast Georgia Health System - Brunswick Campus|Brunswick,GA|beds:300|util:43%|LOS:4.42|CMI:1.72|MC_pct:20%|MD_pct:32%|Voluntary Nonprofi|Urban
+Northside Hospital Gwinnett (FKA Gwinnett Medical Center - Lawrenceville)|Lawrenceville,GA|beds:443|util:100%|LOS:7.29|CMI:2.18|MC_pct:11%|MD_pct:16%|Voluntary Nonprofi|Urban
+Piedmont Eastside Medical Center (FKA Eastside Medical Center)|Snellville,GA|beds:218|util:61%|LOS:4.51|CMI:1.64|MC_pct:9%|MD_pct:19%|Voluntary Nonprofi|Urban
+Northeast Georgia Medical Center Gainesville (AKA NGMC Gainesville)|Gainesville,GA|beds:715|util:83%|LOS:6.02|CMI:1.98|MC_pct:14%|MD_pct:22%|Voluntary Nonprofi|Urban
+Piedmont Henry (FKA Henry Medical Center)|Stockbridge,GA|beds:215|util:83%|LOS:4.87|CMI:1.75|MC_pct:9%|MD_pct:16%|Governmental - Cou|Urban
+Houston Healthcare - Warner Robins (AKA Emory Hospital Warner Robins)|Warner Robins,GA|beds:267|util:62%|LOS:4.74|CMI:1.61|MC_pct:17%|MD_pct:24%|Governmental - Cou|Urban
+Piedmont Columbus Regional - Midtown|Columbus,GA|beds:336|util:65%|LOS:5.76|CMI:2.02|MC_pct:13%|MD_pct:13%|Voluntary Nonprofi|Urban
+St Francis Emory Healthcare (FKA St Francis Hospital)|Columbus,GA|beds:310|util:54%|LOS:5.38|CMI:2.03|MC_pct:14%|MD_pct:17%|Proprietary - Corp|Urban
+Doctors Hospital of Augusta|Augusta,GA|beds:319|util:76%|LOS:5.54|CMI:2.02|MC_pct:9%|MD_pct:16%|Proprietary - Corp|Urban
+Piedmont Augusta (FKA University Hospital)|Augusta,GA|beds:423|util:69%|LOS:5.25|CMI:1.85|MC_pct:17%|MD_pct:22%|Voluntary Nonprofi|Urban
+Wellstar MCG Health Medical Center (FKA Augusta University Medical Center)|Augusta,GA|beds:484|util:82%|LOS:6.44|CMI:2.23|MC_pct:14%|MD_pct:13%|teaching|Voluntary Nonprofi|Urban
+Wellstar West Georgia Medical Center|Lagrange,GA|beds:276|util:34%|LOS:4.08|CMI:1.61|MC_pct:10%|MD_pct:19%|Governmental - Oth|Rural
+Hamilton Medical Center (AKA Hamilton Health Care System)|Dalton,GA|beds:227|util:48%|LOS:5.1|CMI:1.67|MC_pct:16%|MD_pct:24%|Voluntary Nonprofi|Urban
+Kaiser Permanente Moanalua Medical Center|Honolulu,HI|beds:225|util:62%|LOS:5.09|CMI:1.97|MC_pct:3%|MD_pct:4%|Voluntary Nonprofi|Urban
+Queens Medical Center|Honolulu,HI|beds:762|util:84%|LOS:6.6|CMI:2.08|MC_pct:14%|MD_pct:18%|Voluntary Nonprofi|Urban
+Maui Memorial Medical Center|Wailuku,HI|beds:219|util:70%|LOS:6.63|CMI:1.84|MC_pct:14%|MD_pct:14%|Voluntary Nonprofi|Urban
+St Lukes Boise Medical Center|Boise,ID|beds:560|util:63%|LOS:4.46|CMI:1.96|MC_pct:8%|MD_pct:17%|Voluntary Nonprofi|Urban
+Saint Alphonsus Regional Medical Center (AKA Saint Alphonsus Boise Hospital)|Boise,ID|beds:374|util:66%|LOS:4.78|CMI:2.13|MC_pct:12%|MD_pct:21%|Voluntary Nonprofi|Urban
+Eastern Idaho Regional Medical Center (AKA EIRMC)|Idaho Falls,ID|beds:247|util:54%|LOS:4.88|CMI:2.2|MC_pct:15%|MD_pct:23%|Proprietary - Corp|Urban
+Kootenai Health (AKA Kootenai Hospital)|Coeur D Alene,ID|beds:317|util:66%|LOS:4.34|CMI:2.13|MC_pct:18%|MD_pct:26%|Voluntary Nonprofi|Urban
+Blessing Hospital|Quincy,IL|beds:311|util:55%|LOS:4.75|CMI:1.72|MC_pct:15%|MD_pct:34%|Voluntary Nonprofi|Rural
+Carle Foundation Hospital|Urbana,IL|beds:469|util:79%|LOS:5.42|CMI:1.78|MC_pct:9%|MD_pct:20%|Voluntary Nonprofi|Urban
+OSF Little Company of Mary Medical Center (FKA Little Company of Mary Hospital)|Evergreen Park,IL|beds:217|util:57%|LOS:4.47|CMI:1.72|MC_pct:17%|MD_pct:25%|Voluntary Nonprofi|Urban
+Advocate Illinois Masonic Medical Center|Chicago,IL|beds:255|util:52%|LOS:4.33|CMI:1.8|MC_pct:10%|MD_pct:19%|Voluntary Nonprofi|Urban
+Advocate Christ Medical Center|Oak Lawn,IL|beds:735|util:86%|LOS:6.35|CMI:2.22|MC_pct:15%|MD_pct:20%|Voluntary Nonprofi|Urban
+Advocate Lutheran General Hospital|Park Ridge,IL|beds:563|util:83%|LOS:5.56|CMI:1.99|MC_pct:16%|MD_pct:25%|Voluntary Nonprofi|Urban
+Ascension Saint Joseph Chicago (FKA AMITA Health Saint Joseph Hospital Chicago)|Chicago,IL|beds:234|util:44%|LOS:4.83|CMI:1.42|MC_pct:17%|MD_pct:18%|Voluntary Nonprofi|Urban
+Advocate South Suburban Hospital|Hazel Crest,IL|beds:217|util:0%|LOS:0|CMI:0|MC_pct:0%|MD_pct:0%|Voluntary Nonprofi|Urban
+Northwest Community Hospital (AKA Northwest Community Healthcare)|Arlington Heights,IL|beds:424|util:55%|LOS:4.29|CMI:1.73|MC_pct:22%|MD_pct:40%|Voluntary Nonprofi|Urban
+an Brothers (FKA AMITA Health Alexian Brothers Medical Center Elk Grove Village)|Elk Grove Village,IL|beds:282|util:61%|LOS:4.55|CMI:2.04|MC_pct:23%|MD_pct:36%|Voluntary Nonprofi|Urban
+Northwestern Memorial Hospital|Chicago,IL|beds:930|util:86%|LOS:5.27|CMI:2.66|MC_pct:16%|MD_pct:21%|teaching|Voluntary Nonprofi|Urban
+Loyola University Medical Center|Maywood,IL|beds:516|util:67%|LOS:6.86|CMI:2.56|MC_pct:19%|MD_pct:22%|teaching|Voluntary Nonprofi|Urban
+scension St Alexius (FKA AMITA Health St Alexius Medical Center Hoffman Estates)|Hoffman Estates,IL|beds:313|util:57%|LOS:4.03|CMI:1.64|MC_pct:15%|MD_pct:21%|Voluntary Nonprofi|Urban
+John H Stroger Jr Hospital of Cook County|Chicago,IL|beds:429|util:62%|LOS:6.57|CMI:1.87|MC_pct:24%|MD_pct:8%|teaching|Governmental - Cou|Urban
+University of Illinois Hospital|Chicago,IL|beds:401|util:74%|LOS:6.31|CMI:2.27|MC_pct:13%|MD_pct:14%|teaching|Governmental - Sta|Urban
+Insight Hospital & Medical Center Chicago (FKA Mercy Hospital & Medical Center)|Chicago,IL|beds:412|util:42%|LOS:4.17|CMI:1.85|MC_pct:13%|MD_pct:26%|Voluntary Nonprofi|Urban
+Rush University Medical Center|Chicago,IL|beds:608|util:70%|LOS:5.57|CMI:2.3|MC_pct:16%|MD_pct:23%|teaching|Voluntary Nonprofi|Urban
+Mt Sinai Hospital Medical Center (AKA Mount Sinai Hospital)|Chicago,IL|beds:236|util:60%|LOS:5.9|CMI:2.18|MC_pct:0%|MD_pct:7%|Voluntary Nonprofi|Urban
+Evanston Hospital (AKA NorthShore Evanston Hospital)|Evanston,IL|beds:354|util:66%|LOS:4.86|CMI:1.83|MC_pct:21%|MD_pct:38%|Voluntary Nonprofi|Urban
+Advocate Trinity Hospital|Chicago,IL|beds:205|util:42%|LOS:4.51|CMI:1.7|MC_pct:12%|MD_pct:21%|Voluntary Nonprofi|Urban
+MacNeal Hospital|Berwyn,IL|beds:268|util:48%|LOS:5.28|CMI:1.59|MC_pct:10%|MD_pct:18%|Voluntary Nonprofi|Urban
+Northwestern Medicine Palos Hospital (AKA Palos Health)|Palos Heights,IL|beds:326|util:79%|LOS:4.69|CMI:1.73|MC_pct:26%|MD_pct:42%|Voluntary Nonprofi|Urban
+chicago Medicine Mitchell Hospital - Hyde Park (AKA Bernard A Mitchell Hospital)|Chicago,IL|beds:737|util:80%|LOS:7.39|CMI:2.63|MC_pct:16%|MD_pct:19%|teaching|Voluntary Nonprofi|Urban
+Advocate Good Samaritan Hospital|Downers Grove,IL|beds:293|util:66%|LOS:4.7|CMI:1.96|MC_pct:17%|MD_pct:30%|Voluntary Nonprofi|Urban
+Northwestern Medicine Central DuPage Hospital|Winfield,IL|beds:342|util:80%|LOS:4.25|CMI:1.93|MC_pct:12%|MD_pct:29%|Voluntary Nonprofi|Urban
+Edward Hospital (FKA Edward Heart Hospital)|Naperville,IL|beds:294|util:88%|LOS:3.62|CMI:1.81|MC_pct:15%|MD_pct:27%|Voluntary Nonprofi|Urban
+Elmhurst Hospital|Elmhurst,IL|beds:259|util:85%|LOS:3.74|CMI:1.75|MC_pct:18%|MD_pct:31%|Voluntary Nonprofi|Urban
+Uchicago Medicine AdventHealth Hinsdale (FKA AdventHealth Hinsdale)|Hinsdale,IL|beds:224|util:50%|LOS:4.35|CMI:1.86|MC_pct:17%|MD_pct:27%|Voluntary Nonprofi|Urban
+Advocate Sherman Hospital|Elgin,IL|beds:255|util:57%|LOS:3.67|CMI:1.67|MC_pct:18%|MD_pct:30%|Voluntary Nonprofi|Urban
+Advocate Condell Medical Center|Libertyville,IL|beds:275|util:73%|LOS:4.72|CMI:1.76|MC_pct:22%|MD_pct:35%|Voluntary Nonprofi|Urban
+Northwestern Medicine McHenry Hospital (FKA Centegra Hospital - McHenry)|McHenry,IL|beds:293|util:81%|LOS:4.51|CMI:1.76|MC_pct:22%|MD_pct:36%|Voluntary Nonprofi|Urban
+Carle BroMenn Medical Center (FKA Advocate BroMenn Medical Center)|Normal,IL|beds:206|util:44%|LOS:4.46|CMI:1.62|MC_pct:15%|MD_pct:26%|Voluntary Nonprofi|Urban
+HSHS St Marys Hospital|Decatur,IL|beds:244|util:24%|LOS:3.75|CMI:1.64|MC_pct:23%|MD_pct:40%|Voluntary Nonprofi|Urban
+Gateway Regional Medical Center|Granite City,IL|beds:288|util:12%|LOS:3.81|CMI:1.54|MC_pct:0%|MD_pct:16%|Proprietary - Corp|Urban
+Carle Health Methodist Hospital (FKA Methodist Hospital)|Peoria,IL|beds:215|util:75%|LOS:4.99|CMI:1.94|MC_pct:14%|MD_pct:23%|Voluntary Nonprofi|Urban
+OSF Saint Francis Medical Center|Peoria,IL|beds:642|util:79%|LOS:6.41|CMI:2.11|MC_pct:14%|MD_pct:25%|teaching|Voluntary Nonprofi|Urban
+UnityPoint Health - Trinity Rock Island|Rock Island,IL|beds:249|util:51%|LOS:4.41|CMI:1.81|MC_pct:15%|MD_pct:23%|Voluntary Nonprofi|Urban
+Memorial Hospital Belleville|Belleville,IL|beds:300|util:64%|LOS:4.11|CMI:1.64|MC_pct:16%|MD_pct:27%|Voluntary Nonprofi|Urban
+HSHS St Johns Hospital|Springfield,IL|beds:442|util:66%|LOS:5.87|CMI:2.05|MC_pct:17%|MD_pct:24%|Voluntary Nonprofi|Urban
+Springfield Memorial Hospital (FKA Memorial Medical Center)|Springfield,IL|beds:407|util:75%|LOS:5.7|CMI:1.84|MC_pct:17%|MD_pct:29%|Voluntary Nonprofi|Urban
+OSF Saint Anthony Medical Center|Rockford,IL|beds:235|util:75%|LOS:5.6|CMI:1.93|MC_pct:18%|MD_pct:28%|Voluntary Nonprofi|Urban
+UW Health SwedishAmerican Hospital (FKA SwedishAmerican Hospital)|Rockford,IL|beds:338|util:54%|LOS:5.1|CMI:1.77|MC_pct:10%|MD_pct:17%|Voluntary Nonprofi|Urban
+Lutheran Hospital|Fort Wayne,IN|beds:327|util:74%|LOS:5.2|CMI:2.24|MC_pct:14%|MD_pct:20%|Proprietary - Corp|Urban
+Parkview Regional Medical Center|Fort Wayne,IN|beds:542|util:65%|LOS:5.2|CMI:1.82|MC_pct:10%|MD_pct:19%|Voluntary Nonprofi|Urban
+IU Health Ball Memorial Hospital|Muncie,IN|beds:295|util:64%|LOS:5.39|CMI:1.77|MC_pct:17%|MD_pct:26%|Voluntary Nonprofi|Urban
+Elkhart General Hospital|Elkhart,IN|beds:308|util:55%|LOS:4.29|CMI:1.76|MC_pct:14%|MD_pct:24%|Voluntary Nonprofi|Urban
+Baptist Health Floyd (FKA Floyd Memorial Hospital and Health Services)|New Albany,IN|beds:254|util:66%|LOS:3.97|CMI:1.64|MC_pct:19%|MD_pct:34%|Voluntary Nonprofi|Urban
+Community Hospital|Munster,IN|beds:405|util:56%|LOS:5.14|CMI:1.95|MC_pct:20%|MD_pct:34%|Voluntary Nonprofi|Urban
+Community Hospital North|Indianapolis,IN|beds:340|util:70%|LOS:5.3|CMI:1.73|MC_pct:9%|MD_pct:17%|Voluntary Nonprofi|Urban
+Franciscan Health Indianapolis (FKA Franciscan St Francis Health - Indianapolis)|Indianapolis,IN|beds:402|util:74%|LOS:5.44|CMI:2.11|MC_pct:14%|MD_pct:25%|Voluntary Nonprofi|Urban
+Ascension St Vincent Hospital - Indianapolis|Indianapolis,IN|beds:376|util:70%|LOS:6.23|CMI:2.19|MC_pct:13%|MD_pct:19%|Voluntary Nonprofi|Urban
+Community Hospital East|Indianapolis,IN|beds:396|util:74%|LOS:5.0|CMI:2.15|MC_pct:10%|MD_pct:14%|Voluntary Nonprofi|Urban
+Eskenazi Health (AKA Sidney & Lois Eskenazi Hospital)|Indianapolis,IN|beds:314|util:70%|LOS:4.64|CMI:1.99|MC_pct:9%|MD_pct:8%|Governmental - Cou|Urban
+IU Health Methodist Hospital|Indianapolis,IN|beds:1276|util:74%|LOS:7.3|CMI:2.34|MC_pct:8%|MD_pct:14%|Voluntary Nonprofi|Urban
+Northwest Health - Porter (AKA Porter Regional Hospital)|Valparaiso,IN|beds:276|util:66%|LOS:5.13|CMI:1.88|MC_pct:20%|MD_pct:31%|Proprietary - Corp|Urban
+Mishawaka Medical Center (FKA St Joseph Regional Medical Center)|Mishawaka,IN|beds:253|util:46%|LOS:4.09|CMI:1.8|MC_pct:16%|MD_pct:22%|Voluntary Nonprofi|Urban
+Memorial Hospital of South Bend|South Bend,IN|beds:434|util:56%|LOS:5.13|CMI:1.84|MC_pct:14%|MD_pct:19%|Voluntary Nonprofi|Urban
+scension St Vincent Evansville (FKA St Marys Medical Center - Evansville Campus)|Evansville,IN|beds:310|util:49%|LOS:3.89|CMI:1.96|MC_pct:14%|MD_pct:27%|Voluntary Nonprofi|Urban
+Deaconess Midtown Hospital|Evansville,IN|beds:365|util:89%|LOS:4.9|CMI:1.94|MC_pct:18%|MD_pct:30%|Voluntary Nonprofi|Urban
+Union Hospital|Terre Haute,IN|beds:261|util:72%|LOS:3.99|CMI:1.69|MC_pct:17%|MD_pct:28%|Voluntary Nonprofi|Urban
+University of Iowa Hospitals & Clinics|Iowa City,IA|beds:743|util:81%|LOS:6.63|CMI:2.67|MC_pct:16%|MD_pct:20%|teaching|Governmental - Sta|Urban
+UnityPoint Health St Lukes Hospital|Cedar Rapids,IA|beds:279|util:54%|LOS:4.45|CMI:1.84|MC_pct:15%|MD_pct:25%|Voluntary Nonprofi|Urban
+Iowa Methodist Medical Center|Des Moines,IA|beds:597|util:82%|LOS:5.09|CMI:1.94|MC_pct:16%|MD_pct:24%|Voluntary Nonprofi|Urban
+MercyOne Des Moines Medical Center (FKA Mercy Medical Center - Des Moines)|Des Moines,IA|beds:656|util:70%|LOS:5.68|CMI:2.27|MC_pct:15%|MD_pct:24%|Voluntary Nonprofi|Urban
+sis Davenport Medical Center (FKA Genesis Medical Center - East Rusholme Street)|Davenport,IA|beds:308|util:59%|LOS:3.71|CMI:1.89|MC_pct:20%|MD_pct:28%|Voluntary Nonprofi|Urban
+Overland Park Regional Medical Center|Lenexa,KS|beds:265|util:70%|LOS:5.24|CMI:2.03|MC_pct:13%|MD_pct:18%|Proprietary - Corp|Urban
+AdventHealth Shawnee Mission (FKA Shawnee Mission Medical Center)|Overland Park,KS|beds:314|util:60%|LOS:4.54|CMI:1.82|MC_pct:12%|MD_pct:21%|Voluntary Nonprofi|Urban
+Olathe Medical Center|Olathe,KS|beds:227|util:53%|LOS:4.12|CMI:1.77|MC_pct:17%|MD_pct:29%|Voluntary Nonprofi|Urban
+Ascension Via Christi St Francis|Wichita,KS|beds:641|util:68%|LOS:5.91|CMI:2.18|MC_pct:21%|MD_pct:0%|Voluntary Nonprofi|Urban
+Wesley Medical Center|Wichita,KS|beds:615|util:76%|LOS:4.77|CMI:2.07|MC_pct:16%|MD_pct:23%|Proprietary - Corp|Urban
+Stormont Vail Hospital|Topeka,KS|beds:440|util:57%|LOS:4.51|CMI:1.94|MC_pct:17%|MD_pct:31%|Voluntary Nonprofi|Urban
+The University of Kansas Hospital|Kansas City,KS|beds:974|util:77%|LOS:5.76|CMI:2.51|MC_pct:18%|MD_pct:23%|teaching|Governmental - Oth|Urban
+Kings Daughters Medical Center|Ashland,KY|beds:367|util:57%|LOS:4.28|CMI:1.83|MC_pct:15%|MD_pct:24%|Voluntary Nonprofi|Urban
+Owensboro Health Regional Hospital|Owensboro,KY|beds:302|util:51%|LOS:0.89|CMI:1.71|MC_pct:13%|MD_pct:23%|Voluntary Nonprofi|Urban
+Baptist Health Lexington (FKA Central Baptist Hospital)|Lexington,KY|beds:434|util:61%|LOS:4.43|CMI:1.86|MC_pct:12%|MD_pct:23%|Voluntary Nonprofi|Urban
+Saint Joseph Hospital|Lexington,KY|beds:267|util:78%|LOS:5.54|CMI:2.29|MC_pct:15%|MD_pct:21%|Voluntary Nonprofi|Urban
+Baptist Health Hardin (FKA Hardin Memorial Hospital)|Elizabethtown,KY|beds:271|util:60%|LOS:5.02|CMI:1.55|MC_pct:14%|MD_pct:28%|Voluntary Nonprofi|Urban
+Baptist Health Deaconess Madisonville (FKA Baptist Health Madisonville)|Madisonville,KY|beds:410|util:52%|LOS:5.67|CMI:1.85|MC_pct:14%|MD_pct:26%|Voluntary Nonprofi|Rural
+Norton Hospital|Louisville,KY|beds:605|util:66%|LOS:4.93|CMI:1.93|MC_pct:11%|MD_pct:17%|Voluntary Nonprofi|Urban
+Baptist Health Louisville (FKA Baptist Hospital East)|Louisville,KY|beds:464|util:65%|LOS:4.55|CMI:1.78|MC_pct:18%|MD_pct:33%|Voluntary Nonprofi|Urban
+UofL Hospital (AKA University of Louisville Hospital)|Louisville,KY|beds:333|util:89%|LOS:4.9|CMI:2.21|MC_pct:12%|MD_pct:15%|teaching|Voluntary Nonprofi|Urban
+Baptist Health Corbin (FKA Baptist Regional Medical Center)|Corbin,KY|beds:205|util:53%|LOS:4.85|CMI:1.55|MC_pct:8%|MD_pct:16%|Voluntary Nonprofi|Rural
+Mercy Health - Lourdes Hospital|Paducah,KY|beds:212|util:53%|LOS:4.3|CMI:1.7|MC_pct:14%|MD_pct:27%|Voluntary Nonprofi|Urban
+The Medical Center at Bowling Green|Bowling Green,KY|beds:326|util:68%|LOS:5.55|CMI:1.96|MC_pct:15%|MD_pct:23%|Voluntary Nonprofi|Urban
+U Health Shreveport - Academic Medical Center (FKA University Health Shreveport)|Shreveport,LA|beds:243|util:85%|LOS:6.19|CMI:2.3|MC_pct:14%|MD_pct:15%|teaching|Voluntary Nonprofi|Urban
+Willis-Knighton Medical Center|Shreveport,LA|beds:737|util:61%|LOS:5.73|CMI:1.77|MC_pct:16%|MD_pct:28%|Voluntary Nonprofi|Urban
+Lake Charles Memorial Hospital|Lake Charles,LA|beds:223|util:51%|LOS:4.88|CMI:1.84|MC_pct:18%|MD_pct:27%|Voluntary Nonprofi|Urban
+Our Lady of the Lake Regional Medical Center|Baton Rouge,LA|beds:647|util:79%|LOS:5.24|CMI:2.06|MC_pct:10%|MD_pct:14%|Voluntary Nonprofi|Urban
+East Jefferson General Hospital|Metairie,LA|beds:250|util:52%|LOS:4.91|CMI:0|MC_pct:16%|MD_pct:21%|Voluntary Nonprofi|Urban
+Ochsner Medical Center - Main Campus|New Orleans,LA|beds:895|util:73%|LOS:5.66|CMI:2.03|MC_pct:11%|MD_pct:12%|teaching|Voluntary Nonprofi|Urban
+Our Lady of Lourdes Regional Medical Center|Lafayette,LA|beds:396|util:66%|LOS:5.14|CMI:1.96|MC_pct:17%|MD_pct:23%|Voluntary Nonprofi|Urban
+Ochsner Lafayette General Medical Center (FKA Lafayette General Medical Center)|Lafayette,LA|beds:468|util:68%|LOS:5.83|CMI:1.96|MC_pct:18%|MD_pct:25%|Voluntary Nonprofi|Urban
+Touro Infirmary|New Orleans,LA|beds:254|util:44%|LOS:5.51|CMI:1.96|MC_pct:10%|MD_pct:12%|Voluntary Nonprofi|Urban
+St Francis Medical Center|Monroe,LA|beds:342|util:67%|LOS:5.75|CMI:1.93|MC_pct:20%|MD_pct:27%|Voluntary Nonprofi|Urban
+Glenwood Regional Medical Center|West Monroe,LA|beds:212|util:33%|LOS:4.12|CMI:1.9|MC_pct:18%|MD_pct:33%|Proprietary - Corp|Urban
+CHRISTUS St Frances Cabrini Hospital|Alexandria,LA|beds:266|util:69%|LOS:4.98|CMI:1.7|MC_pct:20%|MD_pct:27%|Voluntary Nonprofi|Urban
+Rapides Regional Medical Center|Alexandria,LA|beds:328|util:51%|LOS:5.29|CMI:2.03|MC_pct:18%|MD_pct:26%|Proprietary - Part|Urban
+Slidell Memorial Hospital|Slidell,LA|beds:223|util:46%|LOS:4.14|CMI:1.6|MC_pct:13%|MD_pct:20%|Governmental - Hos|Urban
+North Oaks Medical Center|Hammond,LA|beds:330|util:66%|LOS:5.75|CMI:1.78|MC_pct:12%|MD_pct:18%|Governmental - Hos|Urban
+MaineHealth Maine Medical Center Portland (FKA Maine Medical Center)|Portland,ME|beds:846|util:78%|LOS:7.41|CMI:2.15|MC_pct:11%|MD_pct:19%|teaching|Voluntary Nonprofi|Urban
+Northern Light Eastern Maine Medical Center|Bangor,ME|beds:349|util:88%|LOS:7.5|CMI:2.07|MC_pct:12%|MD_pct:21%|Voluntary Nonprofi|Urban
+Luminis Health Anne Arundel Medical Center (FKA Anne Arundel Health System)|Annapolis,MD|beds:325|util:75%|LOS:4.95|CMI:1.6|MC_pct:0%|MD_pct:42%|Voluntary Nonprofi|Urban
+UM Upper Chesapeake Medical Center|Bel Air,MD|beds:218|util:82%|LOS:5.13|CMI:1.6|MC_pct:36%|MD_pct:48%|Voluntary Nonprofi|Urban
+Hopkins Howard County Medical Center (FKA Howard County General Hospital)|Columbia,MD|beds:245|util:78%|LOS:5.11|CMI:1.55|MC_pct:28%|MD_pct:36%|Voluntary Nonprofi|Urban
+Suburban Hospital|Bethesda,MD|beds:253|util:68%|LOS:5.44|CMI:1.82|MC_pct:37%|MD_pct:46%|Voluntary Nonprofi|Urban
+Holy Cross Hospital|Silver Spring,MD|beds:209|util:76%|LOS:6.01|CMI:1.88|MC_pct:0%|MD_pct:18%|Voluntary Nonprofi|Urban
+is Health Doctors Community Medical Center (FKA Doctors Community Health System)|Lanham,MD|beds:226|util:67%|LOS:5.45|CMI:1.57|MC_pct:0%|MD_pct:35%|Voluntary Nonprofi|Urban`;
+
+  const systemPrompt = `You are an AI assistant for Juliana Care's GTM pipeline, embedded in their Notion workspace.
+You have access to: (1) the Juliana pipeline tracker, (2) Definitive Healthcare data on 427 US hospitals, and (3) Juliana's ICP scoring framework.
+
+== JULIANA ICP SCORING EQUATIONS ==
+Juliana's ideal prospect scores high on these weighted dimensions (0-10 each):
+
+1. BED UTILIZATION PRESSURE (weight: 20%)
+   Score = min(10, (bed_util - 0.70) / 0.03)
+   Ideal: util > 85%. Above 90% = score 10.
+
+2. LENGTH OF STAY INEFFICIENCY (weight: 20%)
+   Score = min(10, (LOS - 4.5) / 0.35)
+   Ideal: LOS > 6.0 days signals chronic care complexity and discharge friction.
+
+3. CASE MIX INDEX — COMPLEXITY (weight: 15%)
+   Score = min(10, (CMI - 1.5) / 0.13)
+   Ideal: CMI > 2.0. High CMI = polychronic, resource-intensive patients Juliana serves well.
+
+4. MEDICAID + MEDICARE MIX (weight: 15%)
+   Score = min(10, (MC_pct + MD_pct - 0.40) / 0.06)
+   Ideal: combined government payer > 60%. These systems face the most margin pressure.
+
+5. SCALE (weight: 10%)
+   Score = min(10, (beds - 200) / 80)
+   Ideal: 400-900 beds. Large enough to move the needle; not so large that change is impossible.
+
+6. TEACHING STATUS (weight: 10%)
+   Score = teaching ? 7 : 3
+   Teaching hospitals have academic incentives to adopt innovation.
+
+7. GEOGRAPHY / MARKET ACCESS (weight: 10%)
+   Score based on target markets: Midwest/Southeast/Mid-Atlantic = 8; other urban = 6; rural = 3.
+
+COMPOSITE ICP SCORE = weighted sum of above 7 dimensions (0-10 scale).
+Flag as HIGH FIT if score >= 6.5, MEDIUM if 5.0-6.5, LOW if < 5.0.
+
+When asked to score or rank hospitals, compute the ICP score using the equations above and return ranked results.
+
+== DEFINITIVE HEALTHCARE DATA (427 US Hospitals, 200+ beds) ==
+Format: Name|City,State|beds|util|LOS|CMI|MC_pct|MD_pct|[teaching]|ownership|geo
+
+${HOSPITAL_DATA}
+
+== JULIANA PIPELINE (as of May 12, 2026) ==
+TOP-TIER ACTIVE:
+- Bon Secours Mercy Health | Active | Blocker: None | Next: Sign NDA + data-sharing kickoff | Owner: Patrick
+- University Hospitals | Advanced | Blocker: None | Next: In-person design session + TCC materials | Owner: Patrick
+- MacNeal (Trinity Health) | In Progress | Blocker: NDA/Legal | Next: Follow up with Chuck on NDA ETA | Owner: Patrick
+- Northwestern Medicine | Paused | Blocker: Internal Alignment | Next: Call Dr. Desai | Owner: Patrick
+- Franciscan Alliance | Early Active | Blocker: None | Next: Confirm meeting with Mike Englehart | Owner: Patrick
+- Powers Health | Active | Blocker: None | Next: Follow-up with Leo + Dr. Kumar (CMO) | Owner: Patrick
+- Emory Healthcare | Active | Blocker: Materials Needed | Next: Send socialization deck to Gem Begoli | Owner: Patrick
+- Wellstar | Active | Blocker: None | Next: Progress intro via Spence McCelland | Owner: Patrick
+
+LEAH'S ACCOUNTS: Tampa General | Ardent Health | Northwell Health | Advocate Health
+SHADI'S ACCOUNTS: SUNY | UAB | UTSW
+OTHER ACTIVE: Rush University | OSF Healthcare | Phoebe Health | Salinas Valley
+
+COLD / PARKED: NewYork-Presbyterian (Jun 2) | Memorial Hermann (Jun 2) | Banner Health (Jun 9) | UC San Diego (Jun 1) | Cook County (Jun 9) | Endeavor Health (May 29) | Mount Sinai Ventures
+
+KEY RISKS:
+1. Shared savings model needs hardening — capacity metrics flagged as 'too soft'
+2. TCC articulation gap — clearer data source + pricing rationale needed
+3. NDA/legal cycle time — pattern risk across pipeline
+4. Cohorted patient model resistance — centralized location requirement
+5. Northwestern internal alignment — dependent on Dr. Desai's advocates
+
+== INSTRUCTIONS ==
+For pipeline questions: answer directly from pipeline data above.
+For hospital search/ranking questions: query the HOSPITAL_DATA, compute ICP scores using the equations, return ranked results with key metrics.
+For hybrid questions (e.g. "find hospitals like our best prospects"): use pipeline data to understand ideal profile, then filter HOSPITAL_DATA.
+Format tables when returning multiple hospital results. Be specific — include names, metrics, scores.
+If web search is enabled, use it for news, CMS updates, or external context.`;
+
+  const messages = [
+    ...history,
+    { role: 'user', content: q }
+  ];
+
+  try {
+    const res = await fetch('https://juliana-proxy.lcallahan-926.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages
+      }, SOURCES.web ? { tools: [{ type: 'web_search_20250305', name: 'web_search' }] } : {}))
+    });
+
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error.message);
+
+    const answer = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+
+    history.push({ role: 'user', content: q });
+    history.push({ role: 'assistant', content: answer });
+
+    dot.classList.remove('active');
+    metaLabel.textContent = `Answer · ${activeSources.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' + ')}`;
+
+    answerEl.innerHTML = formatAnswer(answer);
+
+    document.getElementById('query').value = '';
+
+  } catch (err) {
+    dot.classList.remove('active');
+    metaLabel.textContent = 'Error';
+    answerEl.innerHTML = `<span class="error">Something went wrong: ${err.message}</span>`;
+  }
+
+  btn.disabled = false;
+}
+
+function formatAnswer(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+</script>
+</body>
+</html>
